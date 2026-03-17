@@ -67,11 +67,55 @@ function updateSettingsVisibility() {
         activeGroup.classList.add('active');
     }
 }
+
+function updateURL() {
+    const url = new URL(window.location);
+    url.search = ''; // Clear existing parameters
+    url.searchParams.set('type', typeSelect.value);
+    url.searchParams.set('color', colorPicker.value);
+    
+    const activeGroup = document.getElementById(`settings-${typeSelect.value}`);
+    if (activeGroup) {
+        activeGroup.querySelectorAll('input').forEach(input => {
+            url.searchParams.set(input.id, input.value);
+        });
+    }
+    // Updates the URL seamlessly without reloading or adding to back-button history
+    window.history.replaceState(null, '', url);
+}
+
+function loadFromURL() {
+    const params = new URLSearchParams(window.location.search);
+    
+    if (params.has('type')) {
+        const type = params.get('type');
+        if (Array.from(typeSelect.options).some(opt => opt.value === type)) {
+            typeSelect.value = type;
+        }
+    }
+    if (params.has('color')) colorPicker.value = params.get('color');
+    
+    params.forEach((value, key) => {
+        if (key !== 'type' && key !== 'color') {
+            const input = document.getElementById(key);
+            if (input && input.tagName === 'INPUT') input.value = value;
+        }
+    });
+}
+
 typeSelect.addEventListener('change', () => {
     updateSettingsVisibility();
     resetCanvas();
+    updateURL();
 });
-colorPicker.addEventListener('change', resetCanvas);
+colorPicker.addEventListener('change', () => {
+    resetCanvas();
+    updateURL();
+});
+document.querySelectorAll('.setting-group input').forEach(input => {
+    // Using 'change' instead of 'input' to avoid browser History API rate-limiting on slider drag
+    input.addEventListener('change', updateURL);
+});
 
 function resetIdleTimer(e) {
     if (isExplicitLaunch) return;
@@ -781,6 +825,7 @@ document.addEventListener('fullscreenchange', () => {
 });
 
 // Init
+loadFromURL();
 updateSettingsVisibility();
 resize();
 animationId = requestAnimationFrame(loop);
