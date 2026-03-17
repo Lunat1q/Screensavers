@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffaa00"/>
+      <stop offset="100%" stop-color="#ff3300"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="64" height="64" rx="14" fill="#0a0014"/>
+  
+  <!-- Sun -->
+  <circle cx="32" cy="28" r="18" fill="url(#sun)"/>
+  <rect x="10" y="32" width="44" height="2" fill="#0a0014"/>
+  <rect x="10" y="36" width="44" height="3" fill="#0a0014"/>
+  <rect x="10" y="41" width="44" height="4" fill="#0a0014"/>
+  
+  <!-- Pink Perspective Grid -->
+  <path d="M32 32 L32 64 M32 32 L12 64 M32 32 L52 64 M32 32 L-8 64 M32 32 L72 64 M0 42 L64 42 M0 48 L64 48 M0 56 L64 56" stroke="#ff00aa" stroke-width="1.5" fill="none"/>
+</svg>
