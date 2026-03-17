@@ -61,6 +61,32 @@
             height: 50px;
             cursor: pointer;
         }
+        .setting-group {
+            margin-top: 15px;
+            border-top: 1px solid #333;
+            padding-top: 15px;
+            display: none;
+        }
+        .setting-group.active {
+            display: block;
+        }
+        .setting-row {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .setting-row label {
+            margin-bottom: 0;
+            flex: 1;
+            font-size: 13px;
+        }
+        .setting-row input[type="range"] {
+            flex: 1;
+            width: auto;
+            padding: 0;
+            cursor: pointer;
+        }
         button {
             background: #007bff;
             border: none;
@@ -90,12 +116,79 @@
             <option value="mesmerizing">Complex Harmonograph</option>
             <option value="flow">Vector Flow Field</option>
             <option value="cosmic">Cosmic Warp</option>
+            <option value="win11">Windows 11 Update</option>
+            <option value="matrix">Digital Rain</option>
+            <option value="neon">Neon Waves</option>
         </select>
     </div>
 
     <div class="form-group">
         <label for="colorPicker">Base Color Palette</label>
         <input type="color" id="colorPicker" value="#00d2ff">
+    </div>
+
+    <!-- Settings Containers -->
+    <div id="settings-slow" class="setting-group">
+        <div class="setting-row">
+            <label>Orb Density</label>
+            <input type="range" id="slowCount" min="0.2" max="3" step="0.2" value="1">
+        </div>
+        <div class="setting-row">
+            <label>Movement Speed</label>
+            <input type="range" id="slowSpeed" min="0.1" max="4" step="0.1" value="1">
+        </div>
+    </div>
+    <div id="settings-mesmerizing" class="setting-group">
+        <div class="setting-row">
+            <label>Rotation Speed</label>
+            <input type="range" id="mesmSpeed" min="0.1" max="4" step="0.1" value="1">
+        </div>
+        <div class="setting-row">
+            <label>Complexity</label>
+            <input type="range" id="mesmComplexity" min="3" max="15" step="1" value="5">
+        </div>
+    </div>
+    <div id="settings-flow" class="setting-group">
+        <div class="setting-row">
+            <label>Particle Density</label>
+            <input type="range" id="flowCount" min="0.2" max="3" step="0.2" value="1">
+        </div>
+        <div class="setting-row">
+            <label>Flow Speed</label>
+            <input type="range" id="flowSpeed" min="0.1" max="4" step="0.1" value="1">
+        </div>
+    </div>
+    <div id="settings-cosmic" class="setting-group">
+        <div class="setting-row">
+            <label>Star Density</label>
+            <input type="range" id="cosmicCount" min="0.2" max="3" step="0.2" value="1">
+        </div>
+        <div class="setting-row">
+            <label>Warp Speed</label>
+            <input type="range" id="cosmicSpeed" min="1" max="40" step="1" value="8">
+        </div>
+    </div>
+    <div id="settings-win11" class="setting-group">
+        <div class="setting-row">
+            <label>Spinner Speed</label>
+            <input type="range" id="win11Speed" min="0.2" max="3" step="0.1" value="1">
+        </div>
+    </div>
+    <div id="settings-matrix" class="setting-group">
+        <div class="setting-row">
+            <label>Rain Speed</label>
+            <input type="range" id="matrixSpeed" min="0.2" max="3" step="0.1" value="1">
+        </div>
+    </div>
+    <div id="settings-neon" class="setting-group">
+        <div class="setting-row">
+            <label>Wave Count</label>
+            <input type="range" id="neonCount" min="1" max="10" step="1" value="3">
+        </div>
+        <div class="setting-row">
+            <label>Wave Speed</label>
+            <input type="range" id="neonSpeed" min="0.1" max="4" step="0.1" value="1">
+        </div>
     </div>
 
     <button id="startBtn">Launch Screensaver</button>
