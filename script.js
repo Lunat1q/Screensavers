@@ -13,6 +13,7 @@ let win11Eta = 45;
 let time = 0;
 let idleTimer;
 let isExplicitLaunch = false; // Flag to instantly hide controls on click
+let bounceState = { x: 100, y: 100, vx: 3, vy: 3, color: '#00d2ff', text: 'DVD' };
 
 function resize() {
     width = canvas.width = window.innerWidth;
@@ -34,6 +35,14 @@ function resetCanvas() {
     win11Progress = 0;
     win11Eta = Math.floor(Math.random() * 31) + 30; // 30 to 60 minutes
     time = 0;
+    bounceState = { 
+        x: width / 2, 
+        y: height / 2, 
+        vx: 3, 
+        vy: 3, 
+        color: colorPicker.value, 
+        text: 'DVD' 
+    };
 }
 
 function updateSettingsVisibility() {
@@ -365,6 +374,174 @@ function drawNeon(color) {
     time += 0.015 * speedMult;
 }
 
+// --- Animation 8: Fireworks ---
+function drawFireworks(color) {
+    const frequency = parseFloat(document.getElementById('fwFreq').value);
+    const gravity = 0.05;
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+    ctx.fillRect(0, 0, width, height);
+
+    if (Math.random() < 0.03 * frequency) {
+        particles.push({
+            x: Math.random() * width,
+            y: height,
+            vx: (Math.random() - 0.5) * 3,
+            vy: -(Math.random() * 4 + 7),
+            type: 'rocket',
+            color: `hsl(${Math.random() * 360}, 100%, 60%)`,
+            life: 1
+        });
+    }
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += gravity;
+
+        if (p.type === 'rocket') {
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (p.vy >= -1) {
+                particles.splice(i, 1);
+                for (let j = 0; j < 60; j++) {
+                    let angle = Math.random() * Math.PI * 2;
+                    let speed = Math.random() * 4 + 1;
+                    particles.push({
+                        x: p.x,
+                        y: p.y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        type: 'spark',
+                        color: p.color,
+                        life: 1,
+                        decay: Math.random() * 0.02 + 0.015
+                    });
+                }
+            }
+        } else {
+            p.life -= p.decay;
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+
+            if (p.life <= 0) {
+                particles.splice(i, 1);
+            }
+        }
+    }
+}
+
+// --- Animation 9: Bouncing Text ---
+function drawBouncing(color) {
+    const speedMult = parseFloat(document.getElementById('bounceSpeed').value);
+    const size = parseInt(document.getElementById('bounceSize').value);
+    
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, width, height);
+    
+    let bs = bounceState;
+    bs.x += bs.vx * speedMult;
+    bs.y += bs.vy * speedMult;
+    
+    ctx.font = `bold ${size}px sans-serif`;
+    const metrics = ctx.measureText(bs.text);
+    const textWidth = metrics.width;
+    const textHeight = size; // rough approximation
+    
+    let hw = textWidth / 2;
+    let hh = textHeight / 2;
+    
+    let bounced = false;
+    if (bs.x - hw < 0 || bs.x + hw > width) {
+        bs.vx *= -1;
+        bounced = true;
+        bs.x = Math.max(hw, Math.min(width - hw, bs.x));
+    }
+    if (bs.y - hh < 0 || bs.y + hh > height) {
+        bs.vy *= -1;
+        bounced = true;
+        bs.y = Math.max(hh, Math.min(height - hh, bs.y));
+    }
+    
+    if (bounced) {
+        bs.color = `hsl(${Math.random() * 360}, 100%, 60%)`;
+    }
+    
+    ctx.fillStyle = bs.color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(bs.text, bs.x, bs.y);
+}
+
+// --- Animation 10: Synthwave Grid ---
+function drawSynthwave(color) {
+    const speed = parseFloat(document.getElementById('synthSpeed').value);
+    const density = parseInt(document.getElementById('synthDensity').value);
+    
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, width, height);
+    
+    const rgb = hexToRgb(color);
+    const horizon = height * 0.45;
+    
+    // Draw Sun
+    let sunGradient = ctx.createLinearGradient(0, horizon - 150, 0, horizon);
+    sunGradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 1)`);
+    sunGradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`);
+    ctx.fillStyle = sunGradient;
+    ctx.beginPath();
+    ctx.arc(width / 2, horizon, 150, Math.PI, 0);
+    ctx.fill();
+    
+    // Cut lines in sun
+    let cycle = (time * 15 * speed) % 20;
+    for(let i = 0; i < 150; i += 20) {
+        let y = horizon - i + cycle;
+        if (y < horizon) {
+            let thickness = 2 + ((horizon - y) / 150) * 10;
+            ctx.fillStyle = '#000';
+            ctx.fillRect(width / 2 - 160, y - thickness/2, 320, thickness);
+        }
+    }
+    
+    // Grid
+    ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`;
+    ctx.lineWidth = 2;
+    
+    // Vertical lines
+    for (let i = -width; i < width * 2; i += density) {
+        ctx.beginPath();
+        let xOffset = i - width / 2;
+        ctx.moveTo(width / 2, horizon);
+        ctx.lineTo(width / 2 + xOffset * 5, height);
+        ctx.stroke();
+    }
+    
+    // Horizontal moving lines
+    for (let i = 0; i < 30; i++) {
+        let z = (i + (time * speed) % 1);
+        if (z > 0) {
+            let yPos = horizon + Math.pow(z, 2.5) * 1.5;
+            if (yPos > horizon && yPos < height) {
+                ctx.beginPath();
+                ctx.moveTo(0, yPos);
+                ctx.lineTo(width, yPos);
+                ctx.stroke();
+            }
+        }
+    }
+    
+    time += 0.05 * speed;
+}
+
 // --- Main Animation Loop ---
 function loop() {
     const type = typeSelect.value;
@@ -387,6 +564,12 @@ function loop() {
         drawMatrix(color);
     } else if (type === 'neon') {
         drawNeon(color);
+    } else if (type === 'fireworks') {
+        drawFireworks(color);
+    } else if (type === 'bouncing') {
+        drawBouncing(color);
+    } else if (type === 'synthwave') {
+        drawSynthwave(color);
     }
 
     animationId = requestAnimationFrame(loop);

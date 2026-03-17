@@ -119,6 +119,9 @@
             <option value="win11">Windows 11 Update</option>
             <option value="matrix">Digital Rain</option>
             <option value="neon">Neon Waves</option>
+            <option value="fireworks">Fireworks</option>
+            <option value="bouncing">Bouncing Text</option>
+            <option value="synthwave">Synthwave Grid</option>
         </select>
     </div>
 
@@ -188,6 +191,32 @@
         <div class="setting-row">
             <label>Wave Speed</label>
             <input type="range" id="neonSpeed" min="0.1" max="4" step="0.1" value="1">
+        </div>
+    </div>
+    <div id="settings-fireworks" class="setting-group">
+        <div class="setting-row">
+            <label>Explosion Frequency</label>
+            <input type="range" id="fwFreq" min="0.2" max="3" step="0.2" value="1">
+        </div>
+    </div>
+    <div id="settings-bouncing" class="setting-group">
+        <div class="setting-row">
+            <label>Bounce Speed</label>
+            <input type="range" id="bounceSpeed" min="0.5" max="5" step="0.5" value="2">
+        </div>
+        <div class="setting-row">
+            <label>Text Size</label>
+            <input type="range" id="bounceSize" min="20" max="150" step="5" value="60">
+        </div>
+    </div>
+    <div id="settings-synthwave" class="setting-group">
+        <div class="setting-row">
+            <label>Grid Density</label>
+            <input type="range" id="synthDensity" min="20" max="100" step="10" value="40">
+        </div>
+        <div class="setting-row">
+            <label>Movement Speed</label>
+            <input type="range" id="synthSpeed" min="0.1" max="3" step="0.1" value="1">
         </div>
     </div>
 
