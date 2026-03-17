@@ -15,10 +15,24 @@ let idleTimer;
 let isExplicitLaunch = false; // Flag to instantly hide controls on click
 let bounceState = { x: 100, y: 100, vx: 3, vy: 3, color: '#00d2ff', text: 'DVD' };
 
+function isFullscreen() {
+    return !!document.fullscreenElement || (window.innerWidth === screen.width && window.innerHeight === screen.height);
+}
+
 function resize() {
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
     resetCanvas();
+    
+    if (isFullscreen() && !isExplicitLaunch) {
+        ui.classList.add('hidden');
+        document.body.style.cursor = 'none';
+        clearTimeout(idleTimer);
+    } else if (!isFullscreen() && !isExplicitLaunch) {
+        ui.classList.remove('hidden');
+        document.body.style.cursor = 'default';
+        clearTimeout(idleTimer);
+    }
 }
 window.addEventListener('resize', resize);
 
@@ -62,13 +76,13 @@ colorPicker.addEventListener('change', resetCanvas);
 function resetIdleTimer(e) {
     if (isExplicitLaunch) return;
 
-    if (document.fullscreenElement && e && e.type === 'mousemove') return;
+    if (isFullscreen() && e && e.type === 'mousemove') return;
 
     document.body.style.cursor = 'default';
     ui.classList.remove('hidden');
     clearTimeout(idleTimer);
     
-    if (document.fullscreenElement) {
+    if (isFullscreen()) {
         idleTimer = setTimeout(() => {
             document.body.style.cursor = 'none';
             ui.classList.add('hidden');
@@ -490,56 +504,207 @@ function drawSynthwave(color) {
     ctx.fillRect(0, 0, width, height);
     
     const rgb = hexToRgb(color);
-    const horizon = height * 0.45;
+    const horizon = height * 0.5;
+    
+    // Stars
+    if (particles.length === 0) {
+        for (let i = 0; i < 150; i++) {
+            particles.push({
+                x: Math.random() * width,
+                y: Math.random() * horizon,
+                size: Math.random() * 1.5 + 0.5,
+                blinkSpeed: Math.random() * 0.05 + 0.01
+            });
+        }
+    }
+    ctx.fillStyle = '#fff';
+    particles.forEach(p => {
+        let alpha = (Math.sin(time * p.blinkSpeed * 200) + 1) / 2 * 0.8 + 0.2;
+        ctx.globalAlpha = alpha;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+    });
+    ctx.globalAlpha = 1;
     
     // Draw Sun
+    ctx.shadowBlur = 40;
+    ctx.shadowColor = `rgba(255, 80, 0, 0.8)`;
     let sunGradient = ctx.createLinearGradient(0, horizon - 150, 0, horizon);
-    sunGradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 1)`);
-    sunGradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`);
+    sunGradient.addColorStop(0, `rgba(255, 100, 0, 1)`);
+    sunGradient.addColorStop(1, `rgba(255, 200, 0, 0)`);
     ctx.fillStyle = sunGradient;
     ctx.beginPath();
     ctx.arc(width / 2, horizon, 150, Math.PI, 0);
     ctx.fill();
+    ctx.shadowBlur = 0;
     
     // Cut lines in sun
-    let cycle = (time * 15 * speed) % 20;
+    let cycle = (time * 35 * speed) % 20;
     for(let i = 0; i < 150; i += 20) {
         let y = horizon - i + cycle;
         if (y < horizon) {
-            let thickness = 2 + ((horizon - y) / 150) * 10;
+            let thickness = 2 + ((horizon - y) / 150) * 12;
             ctx.fillStyle = '#000';
             ctx.fillRect(width / 2 - 160, y - thickness/2, 320, thickness);
         }
     }
     
-    // Grid
-    ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`;
-    ctx.lineWidth = 2;
+    // Grid Floor Base Background
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, horizon, width, height - horizon);
     
-    // Vertical lines
-    for (let i = -width; i < width * 2; i += density) {
-        ctx.beginPath();
-        let xOffset = i - width / 2;
-        ctx.moveTo(width / 2, horizon);
-        ctx.lineTo(width / 2 + xOffset * 5, height);
-        ctx.stroke();
+    // 3D Valley Mesh
+    ctx.lineWidth = 1.5;
+    
+    let segmentsX = 30; 
+    let segmentsZ = 40; 
+    let pathWidth = 3; 
+    let zSpeed = time * 3.5; 
+    let zOffset = zSpeed % 1;
+    let currentZInt = Math.floor(zSpeed);
+
+    function getMountainHeight(x, z) {
+        if (Math.abs(x) <= pathWidth) return 0; // Flat road in the middle
+        let dist = Math.abs(x) - pathWidth;
+        let noise = Math.sin(x * 0.4 + z * 0.2) + (0.5 - Math.abs(Math.sin(x * 0.8 + z * 0.4))) * 2.5;
+        return Math.max(0, Math.pow(dist, 1.15) * 16 + noise * dist * 8);
     }
-    
-    // Horizontal moving lines
-    for (let i = 0; i < 30; i++) {
-        let z = (i + (time * speed) % 1);
-        if (z > 0) {
-            let yPos = horizon + Math.pow(z, 2.5) * 1.5;
-            if (yPos > horizon && yPos < height) {
-                ctx.beginPath();
-                ctx.moveTo(0, yPos);
-                ctx.lineTo(width, yPos);
-                ctx.stroke();
-            }
+
+    function p3d(x, y, zIndex) {
+        let maxZ = segmentsZ + 2;
+        let pct = Math.max(0, 1 - (zIndex / maxZ));
+        let scale = Math.pow(pct, 1.8) * 20; // Perspective acceleration
+        return {
+            x: width / 2 + x * density * 1.25 * scale,
+            y: horizon + 30 * scale - y * scale
+        };
+    }
+
+    // Draw Back-to-Front for proper overlap
+    for (let iz = segmentsZ; iz > 0; iz--) {
+        let z1 = iz - zOffset + 1; 
+        let z2 = iz - zOffset; 
+        
+        let worldZ1 = currentZInt + iz;
+        let worldZ2 = currentZInt + iz - 1;
+        
+        let alpha = Math.max(0, 1 - (iz / segmentsZ));
+        ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+        ctx.fillStyle = '#000'; // Block out the sun and stars behind mountains
+        
+        for (let ix = -segmentsX; ix < segmentsX; ix++) {
+            let h1 = getMountainHeight(ix, worldZ1);
+            let h2 = getMountainHeight(ix + 1, worldZ1);
+            let h3 = getMountainHeight(ix + 1, worldZ2);
+            let h4 = getMountainHeight(ix, worldZ2);
+            
+            let p1 = p3d(ix, h1, z1);
+            let p2 = p3d(ix + 1, h2, z1);
+            let p3 = p3d(ix + 1, h3, z2);
+            let p4 = p3d(ix, h4, z2);
+            
+            // Cull off-screen quads to preserve performance
+            if (p1.y > height && p2.y > height && p3.y > height && p4.y > height) continue;
+            if (p1.x > width + 200 && p4.x > width + 200) continue;
+            if (p2.x < -200 && p3.x < -200) continue;
+            if (p1.y < horizon - 300 && p2.y < horizon - 300 && p3.y < horizon - 300 && p4.y < horizon - 300) continue;
+            
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.lineTo(p3.x, p3.y);
+            ctx.lineTo(p4.x, p4.y);
+            ctx.closePath();
+            
+            ctx.fill();
+            ctx.stroke();
         }
     }
     
-    time += 0.05 * speed;
+    time += 0.02 * speed;
+}
+
+// --- Animation 11: Cyber Tunnel ---
+function drawTunnel(color) {
+    const speed = parseFloat(document.getElementById('tunnelSpeed').value);
+    
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    ctx.fillRect(0, 0, width, height);
+    
+    const rgb = hexToRgb(color);
+    const cx = width / 2;
+    const cy = height / 2;
+    
+    ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.8)`;
+    ctx.lineWidth = 2;
+    
+    let zOffset = (time * speed * 50) % 100;
+    
+    for (let i = 0; i < 25; i++) {
+        let z = i * 100 - zOffset;
+        if (z <= 0) continue;
+        
+        let scale = 800 / z;
+        let x = cx + Math.sin(time * speed + i * 0.1) * 50 * scale;
+        let y = cy + Math.cos(time * speed * 0.8 + i * 0.1) * 50 * scale;
+        
+        let size = 200 * scale;
+        
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(time * speed * 0.2 + z * 0.001);
+        
+        ctx.beginPath();
+        for (let j = 0; j < 6; j++) {
+            let angle = (j / 6) * Math.PI * 2;
+            let px = Math.cos(angle) * size;
+            let py = Math.sin(angle) * size;
+            if (j === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+    }
+    time += 0.02;
+}
+
+// --- Animation 12: Water Ripples ---
+function drawRipples(color) {
+    const freq = parseFloat(document.getElementById('rippleFreq').value);
+    
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    ctx.fillRect(0, 0, width, height);
+    
+    const rgb = hexToRgb(color);
+    
+    if (Math.random() < 0.05 * freq) {
+        particles.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            radius: 0,
+            maxRadius: Math.random() * 100 + 50,
+            life: 1
+        });
+    }
+    
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.radius += 2;
+        p.life -= 0.01;
+        
+        if (p.life <= 0) {
+            particles.splice(i, 1);
+            continue;
+        }
+        
+        ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.life})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, p.radius, p.radius * 0.5, 0, 0, Math.PI * 2);
+        ctx.stroke();
+    }
 }
 
 // --- Main Animation Loop ---
@@ -570,6 +735,10 @@ function loop() {
         drawBouncing(color);
     } else if (type === 'synthwave') {
         drawSynthwave(color);
+    } else if (type === 'tunnel') {
+        drawTunnel(color);
+    } else if (type === 'ripples') {
+        drawRipples(color);
     }
 
     animationId = requestAnimationFrame(loop);
@@ -596,14 +765,18 @@ document.getElementById('startBtn').addEventListener('click', () => {
 });
 
 document.addEventListener('fullscreenchange', () => {
-    if (!document.fullscreenElement) {
+    if (!isFullscreen()) {
         // Exiting fullscreen restores the UI permanently
         ui.classList.remove('hidden');
         document.body.style.cursor = 'default';
         clearTimeout(idleTimer);
     } else {
         // Normal fullscreen flow unless forced by the button
-        if (!isExplicitLaunch) resetIdleTimer();
+        if (!isExplicitLaunch) {
+            ui.classList.add('hidden');
+            document.body.style.cursor = 'none';
+            clearTimeout(idleTimer);
+        }
     }
 });
 
