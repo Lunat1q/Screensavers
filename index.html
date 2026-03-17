@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fullscreen Screensavers</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+        }
+        #ui {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(20, 20, 20, 0.95);
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+            transition: opacity 0.5s ease;
+            z-index: 10;
+            min-width: 300px;
+            border: 1px solid #333;
+        }
+        .hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        h2 {
+            margin-top: 0;
+            font-weight: 400;
+            letter-spacing: 1px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #aaa;
+        }
+        select, input[type="color"], button {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 6px;
+            border: 1px solid #444;
+            background: #111;
+            color: #fff;
+            box-sizing: border-box;
+        }
+        input[type="color"] {
+            padding: 5px;
+            height: 50px;
+            cursor: pointer;
+        }
+        button {
+            background: #007bff;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+            transition: background 0.3s ease;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    <h2>Screensaver Settings</h2>
+    
+    <div class="form-group">
+        <label for="typeSelect">Animation Type</label>
+        <select id="typeSelect">
+            <option value="solid">Solid Color</option>
+            <option value="slow">Constellation Orbs</option>
+            <option value="mesmerizing">Complex Harmonograph</option>
+            <option value="flow">Vector Flow Field</option>
+            <option value="cosmic">Cosmic Warp</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="colorPicker">Base Color Palette</label>
+        <input type="color" id="colorPicker" value="#00d2ff">
+    </div>
+
+    <button id="startBtn">Launch Screensaver</button>
+</div>
+
+<canvas id="canvas"></canvas>
+<script src="script.js"></script>
+</body>
+</html>
