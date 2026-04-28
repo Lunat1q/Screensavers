@@ -4,238 +4,703 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <title>Fullscreen Screensavers</title>
+    <title>Screensaver Studio</title>
     <style>
+        * { box-sizing: border-box; }
+
         body {
             margin: 0;
             overflow: hidden;
             background-color: #000;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
             color: #fff;
         }
+
         #ui {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(20, 20, 20, 0.95);
-            padding: 30px;
-            border-radius: 12px;
+            background: rgba(10, 10, 18, 0.82);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            padding: 32px;
+            border-radius: 16px;
             text-align: center;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
-            transition: opacity 0.5s ease;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            transition: opacity 0.5s ease, transform 0.5s ease;
             z-index: 10;
-            min-width: 300px;
-            border: 1px solid #333;
+            width: 540px;
+            max-width: 95vw;
+            max-height: 85vh;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.07);
         }
-        .hidden {
+
+        #ui.hidden {
             opacity: 0;
             pointer-events: none;
+            transform: translate(-50%, -50%) scale(0.95);
         }
+
+        #ui::-webkit-scrollbar { width: 5px; }
+        #ui::-webkit-scrollbar-track { background: transparent; }
+        #ui::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
+        #ui::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+
         h2 {
-            margin-top: 0;
-            font-weight: 400;
-            letter-spacing: 1px;
+            margin: 0 0 24px 0;
+            font-weight: 300;
+            font-size: 20px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, #00d2ff, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
+
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 18px;
             text-align: left;
         }
+
         label {
             display: block;
-            margin-bottom: 8px;
-            font-size: 14px;
-            color: #aaa;
+            margin-bottom: 7px;
+            font-size: 11px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
         }
-        select, input[type="color"], button {
+
+        select {
             width: 100%;
-            padding: 12px;
-            font-size: 16px;
-            border-radius: 6px;
-            border: 1px solid #444;
-            background: #111;
+            padding: 11px 16px;
+            font-size: 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
             color: #fff;
-            box-sizing: border-box;
-        }
-        input[type="color"] {
-            padding: 5px;
-            height: 50px;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23666' d='M5 7L0 2h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
             cursor: pointer;
+            transition: border-color 0.3s, background 0.3s;
         }
+
+        select:hover, select:focus {
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+            outline: none;
+        }
+
+        select optgroup { background: #141422; color: #888; font-style: normal; font-weight: 600; }
+        select option { background: #141422; color: #eee; padding: 6px; }
+
+        input[type="color"] {
+            width: 100%;
+            padding: 4px;
+            height: 42px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        input[type="color"]:hover { border-color: rgba(255, 255, 255, 0.2); }
+
         .setting-group {
-            margin-top: 15px;
-            border-top: 1px solid #333;
-            padding-top: 15px;
+            margin-top: 14px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            padding-top: 14px;
             display: none;
         }
-        .setting-group.active {
-            display: block;
-        }
+        .setting-group.active { display: block; }
+
         .setting-row {
             margin-bottom: 12px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            gap: 10px;
         }
+
         .setting-row label {
             margin-bottom: 0;
-            flex: 1;
-            font-size: 13px;
+            flex: 0 0 auto;
+            min-width: 100px;
+            font-size: 11px;
+            white-space: nowrap;
         }
+
         .setting-row input[type="range"] {
             flex: 1;
-            width: auto;
-            padding: 0;
+            height: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            outline: none;
             cursor: pointer;
         }
-        button {
-            background: #007bff;
-            border: none;
+
+        .setting-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 0 8px rgba(0, 210, 255, 0.35);
             cursor: pointer;
-            font-weight: bold;
-            margin-top: 10px;
-            transition: background 0.3s ease;
+            transition: box-shadow 0.2s;
+        }
+        .setting-row input[type="range"]::-webkit-slider-thumb:hover {
+            box-shadow: 0 0 14px rgba(0, 210, 255, 0.7);
+        }
+
+        .setting-row input[type="range"]::-moz-range-thumb {
+            width: 14px; height: 14px; border-radius: 50%;
+            background: #fff; border: none;
+            box-shadow: 0 0 8px rgba(0, 210, 255, 0.35);
+            cursor: pointer;
+        }
+        .setting-row input[type="range"]::-moz-range-track {
+            height: 4px; background: rgba(255,255,255,0.1);
+            border-radius: 2px; border: none;
+        }
+
+        .val {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.35);
+            min-width: 30px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            font-family: 'SF Mono', 'Consolas', monospace;
+        }
+
+        .setting-row input[type="text"] {
+            flex: 1;
+            padding: 7px 12px;
+            font-size: 13px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .setting-row input[type="text"]:focus {
+            border-color: rgba(0, 210, 255, 0.4);
+        }
+
+        button {
+            width: 100%;
+            padding: 13px;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(135deg, #0077ff, #a855f7);
+            color: #fff;
+            cursor: pointer;
+            margin-top: 18px;
+            transition: transform 0.2s, box-shadow 0.3s, filter 0.3s;
+            text-transform: uppercase;
         }
         button:hover {
-            background: #0056b3;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 24px rgba(0, 119, 255, 0.35);
+            filter: brightness(1.1);
         }
-        canvas {
-            display: block;
+        button:active { transform: translateY(0); }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+            text-align: center;
         }
+        @media (max-width: 480px) {
+            .card-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        .card-category {
+            grid-column: 1 / -1;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: rgba(255,255,255,0.2);
+            padding: 10px 0 4px;
+            text-align: left;
+        }
+        .card-category:first-child { padding-top: 2px; }
+        .card {
+            padding: 10px 4px 8px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.05);
+            background: rgba(255,255,255,0.02);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            user-select: none;
+        }
+        .card:hover {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(255,255,255,0.15);
+        }
+        .card.active {
+            background: rgba(0,119,255,0.1);
+            border-color: rgba(0,119,255,0.45);
+            box-shadow: 0 0 14px rgba(0,119,255,0.12);
+        }
+        .card-icon { font-size: 22px; line-height: 1; }
+        .card-name {
+            font-size: 9.5px;
+            color: rgba(255,255,255,0.45);
+            line-height: 1.2;
+            letter-spacing: 0.3px;
+        }
+        .card.active .card-name { color: rgba(255,255,255,0.9); }
+
+        canvas { display: block; }
     </style>
 </head>
 <body>
 
 <div id="ui">
-    <h2>Screensaver Settings</h2>
-    
+    <h2>Screensaver Studio</h2>
+
     <div class="form-group">
-        <label for="typeSelect">Animation Type</label>
-        <select id="typeSelect">
+        <label>Animation</label>
+        <select id="typeSelect" style="display:none">
             <option value="solid">Solid Color</option>
+            <option value="bouncing">Bouncing Text</option>
+            <option value="matrix">Digital Rain</option>
             <option value="slow">Constellation Orbs</option>
-            <option value="mesmerizing">Complex Harmonograph</option>
             <option value="flow">Vector Flow Field</option>
             <option value="cosmic">Cosmic Warp</option>
-            <option value="win11">Windows 11 Update</option>
-            <option value="matrix">Digital Rain</option>
-            <option value="neon">Neon Waves</option>
             <option value="fireworks">Fireworks</option>
-            <option value="bouncing">Bouncing Text</option>
+            <option value="galaxy">Galaxy Spiral</option>
+            <option value="mesmerizing">Complex Harmonograph</option>
+            <option value="neon">Neon Waves</option>
+            <option value="plasma">Plasma</option>
+            <option value="aurora">Aurora Borealis</option>
+            <option value="julia">Julia Set</option>
+            <option value="mandelbrot">Mandelbrot</option>
+            <option value="phoenix">Phoenix</option>
             <option value="synthwave">Synthwave Grid</option>
             <option value="tunnel">Cyber Tunnel</option>
             <option value="ripples">Water Ripples</option>
+            <option value="lightning">Lightning Storm</option>
+            <option value="win11">Windows 11 Update</option>
         </select>
+        <div class="card-grid" id="cardGrid">
+            <div class="card-category">Classic</div>
+            <div class="card" data-value="solid"><span class="card-icon">🎨</span><span class="card-name">Solid</span></div>
+            <div class="card" data-value="bouncing"><span class="card-icon">📀</span><span class="card-name">Bouncing</span></div>
+            <div class="card" data-value="matrix"><span class="card-icon">🌧️</span><span class="card-name">Matrix Rain</span></div>
+            <div class="card-category">Particles</div>
+            <div class="card" data-value="slow"><span class="card-icon">✨</span><span class="card-name">Constellation</span></div>
+            <div class="card" data-value="flow"><span class="card-icon">🌊</span><span class="card-name">Flow Field</span></div>
+            <div class="card" data-value="cosmic"><span class="card-icon">🚀</span><span class="card-name">Cosmic Warp</span></div>
+            <div class="card" data-value="fireworks"><span class="card-icon">🎆</span><span class="card-name">Fireworks</span></div>
+            <div class="card" data-value="galaxy"><span class="card-icon">🌌</span><span class="card-name">Galaxy</span></div>
+            <div class="card-category">Waves & Patterns</div>
+            <div class="card" data-value="mesmerizing"><span class="card-icon">🌀</span><span class="card-name">Harmonograph</span></div>
+            <div class="card" data-value="neon"><span class="card-icon">〰️</span><span class="card-name">Neon Waves</span></div>
+            <div class="card" data-value="plasma"><span class="card-icon">🔮</span><span class="card-name">Plasma</span></div>
+            <div class="card" data-value="aurora"><span class="card-icon">🌈</span><span class="card-name">Aurora</span></div>
+            <div class="card-category">Fractals</div>
+            <div class="card" data-value="julia"><span class="card-icon">🔷</span><span class="card-name">Julia Set</span></div>
+            <div class="card" data-value="mandelbrot"><span class="card-icon">🪰</span><span class="card-name">Mandelbrot</span></div>
+            <div class="card" data-value="phoenix"><span class="card-icon">🦅</span><span class="card-name">Phoenix</span></div>
+            <div class="card-category">Scenes</div>
+            <div class="card" data-value="synthwave"><span class="card-icon">🌅</span><span class="card-name">Synthwave</span></div>
+            <div class="card" data-value="tunnel"><span class="card-icon">◎</span><span class="card-name">Cyber Tunnel</span></div>
+            <div class="card" data-value="ripples"><span class="card-icon">💧</span><span class="card-name">Ripples</span></div>
+            <div class="card" data-value="lightning"><span class="card-icon">⚡</span><span class="card-name">Lightning</span></div>
+            <div class="card-category">Fun</div>
+            <div class="card" data-value="win11"><span class="card-icon">💻</span><span class="card-name">Win Update</span></div>
+        </div>
     </div>
 
     <div class="form-group">
-        <label for="colorPicker">Base Color Palette</label>
+        <label for="colorPicker">Base Color</label>
         <input type="color" id="colorPicker" value="#00d2ff">
     </div>
 
-    <!-- Settings Containers -->
+    <!-- Constellation Orbs -->
     <div id="settings-slow" class="setting-group">
         <div class="setting-row">
-            <label>Orb Density</label>
+            <label>Density</label>
             <input type="range" id="slowCount" min="0.2" max="3" step="0.2" value="1">
+            <span class="val" data-for="slowCount"></span>
         </div>
         <div class="setting-row">
-            <label>Movement Speed</label>
+            <label>Speed</label>
             <input type="range" id="slowSpeed" min="0.1" max="4" step="0.1" value="1">
+            <span class="val" data-for="slowSpeed"></span>
+        </div>
+        <div class="setting-row">
+            <label>Link Distance</label>
+            <input type="range" id="slowLinkDist" min="60" max="350" step="10" value="180">
+            <span class="val" data-for="slowLinkDist"></span>
+        </div>
+        <div class="setting-row">
+            <label>Glow</label>
+            <input type="range" id="slowGlow" min="0" max="25" step="1" value="0">
+            <span class="val" data-for="slowGlow"></span>
         </div>
     </div>
+
+    <!-- Complex Harmonograph -->
     <div id="settings-mesmerizing" class="setting-group">
         <div class="setting-row">
-            <label>Rotation Speed</label>
+            <label>Speed</label>
             <input type="range" id="mesmSpeed" min="0.1" max="4" step="0.1" value="1">
+            <span class="val" data-for="mesmSpeed"></span>
         </div>
         <div class="setting-row">
             <label>Complexity</label>
             <input type="range" id="mesmComplexity" min="3" max="15" step="1" value="5">
+            <span class="val" data-for="mesmComplexity"></span>
+        </div>
+        <div class="setting-row">
+            <label>Trail Length</label>
+            <input type="range" id="mesmTrail" min="0.01" max="0.15" step="0.01" value="0.04">
+            <span class="val" data-for="mesmTrail"></span>
+        </div>
+        <div class="setting-row">
+            <label>Line Width</label>
+            <input type="range" id="mesmLineWidth" min="0.5" max="5" step="0.5" value="1.5">
+            <span class="val" data-for="mesmLineWidth"></span>
         </div>
     </div>
+
+    <!-- Vector Flow Field -->
     <div id="settings-flow" class="setting-group">
         <div class="setting-row">
-            <label>Particle Density</label>
+            <label>Density</label>
             <input type="range" id="flowCount" min="0.2" max="3" step="0.2" value="1">
+            <span class="val" data-for="flowCount"></span>
         </div>
         <div class="setting-row">
-            <label>Flow Speed</label>
+            <label>Speed</label>
             <input type="range" id="flowSpeed" min="0.1" max="4" step="0.1" value="1">
+            <span class="val" data-for="flowSpeed"></span>
+        </div>
+        <div class="setting-row">
+            <label>Turbulence</label>
+            <input type="range" id="flowTurb" min="0.001" max="0.01" step="0.001" value="0.003">
+            <span class="val" data-for="flowTurb"></span>
+        </div>
+        <div class="setting-row">
+            <label>Trail Length</label>
+            <input type="range" id="flowTrail" min="0.02" max="0.25" step="0.01" value="0.06">
+            <span class="val" data-for="flowTrail"></span>
         </div>
     </div>
+
+    <!-- Cosmic Warp -->
     <div id="settings-cosmic" class="setting-group">
         <div class="setting-row">
             <label>Star Density</label>
             <input type="range" id="cosmicCount" min="0.2" max="3" step="0.2" value="1">
+            <span class="val" data-for="cosmicCount"></span>
         </div>
         <div class="setting-row">
             <label>Warp Speed</label>
             <input type="range" id="cosmicSpeed" min="1" max="40" step="1" value="8">
+            <span class="val" data-for="cosmicSpeed"></span>
+        </div>
+        <div class="setting-row">
+            <label>Star Size</label>
+            <input type="range" id="cosmicSize" min="0.5" max="3" step="0.1" value="1">
+            <span class="val" data-for="cosmicSize"></span>
         </div>
     </div>
+
+    <!-- Windows 11 Update -->
     <div id="settings-win11" class="setting-group">
         <div class="setting-row">
             <label>Spinner Speed</label>
             <input type="range" id="win11Speed" min="0.2" max="3" step="0.1" value="1">
+            <span class="val" data-for="win11Speed"></span>
         </div>
     </div>
+
+    <!-- Digital Rain -->
     <div id="settings-matrix" class="setting-group">
         <div class="setting-row">
             <label>Rain Speed</label>
             <input type="range" id="matrixSpeed" min="0.2" max="3" step="0.1" value="1">
+            <span class="val" data-for="matrixSpeed"></span>
+        </div>
+        <div class="setting-row">
+            <label>Font Size</label>
+            <input type="range" id="matrixFontSize" min="10" max="40" step="2" value="20">
+            <span class="val" data-for="matrixFontSize"></span>
         </div>
     </div>
+
+    <!-- Neon Waves -->
     <div id="settings-neon" class="setting-group">
         <div class="setting-row">
             <label>Wave Count</label>
             <input type="range" id="neonCount" min="1" max="10" step="1" value="3">
+            <span class="val" data-for="neonCount"></span>
         </div>
         <div class="setting-row">
-            <label>Wave Speed</label>
+            <label>Speed</label>
             <input type="range" id="neonSpeed" min="0.1" max="4" step="0.1" value="1">
+            <span class="val" data-for="neonSpeed"></span>
+        </div>
+        <div class="setting-row">
+            <label>Amplitude</label>
+            <input type="range" id="neonAmp" min="0.1" max="1" step="0.05" value="0.5">
+            <span class="val" data-for="neonAmp"></span>
+        </div>
+        <div class="setting-row">
+            <label>Thickness</label>
+            <input type="range" id="neonWidth" min="1" max="10" step="0.5" value="4">
+            <span class="val" data-for="neonWidth"></span>
         </div>
     </div>
+
+    <!-- Fireworks -->
     <div id="settings-fireworks" class="setting-group">
         <div class="setting-row">
-            <label>Explosion Frequency</label>
+            <label>Frequency</label>
             <input type="range" id="fwFreq" min="0.2" max="3" step="0.2" value="1">
+            <span class="val" data-for="fwFreq"></span>
+        </div>
+        <div class="setting-row">
+            <label>Spark Count</label>
+            <input type="range" id="fwSparks" min="20" max="150" step="10" value="60">
+            <span class="val" data-for="fwSparks"></span>
+        </div>
+        <div class="setting-row">
+            <label>Gravity</label>
+            <input type="range" id="fwGravity" min="0.01" max="0.15" step="0.01" value="0.05">
+            <span class="val" data-for="fwGravity"></span>
         </div>
     </div>
+
+    <!-- Bouncing Text -->
     <div id="settings-bouncing" class="setting-group">
         <div class="setting-row">
-            <label>Bounce Speed</label>
+            <label>Speed</label>
             <input type="range" id="bounceSpeed" min="0.5" max="5" step="0.5" value="2">
+            <span class="val" data-for="bounceSpeed"></span>
         </div>
         <div class="setting-row">
             <label>Text Size</label>
             <input type="range" id="bounceSize" min="20" max="150" step="5" value="60">
+            <span class="val" data-for="bounceSize"></span>
+        </div>
+        <div class="setting-row">
+            <label>Trail</label>
+            <input type="range" id="bounceTrail" min="0" max="0.95" step="0.05" value="0">
+            <span class="val" data-for="bounceTrail"></span>
+        </div>
+        <div class="setting-row">
+            <label>Text</label>
+            <input type="text" id="bounceText" value="DVD" maxlength="20">
         </div>
     </div>
+
+    <!-- Synthwave Grid -->
     <div id="settings-synthwave" class="setting-group">
         <div class="setting-row">
             <label>Grid Density</label>
             <input type="range" id="synthDensity" min="20" max="100" step="10" value="40">
+            <span class="val" data-for="synthDensity"></span>
         </div>
         <div class="setting-row">
-            <label>Movement Speed</label>
+            <label>Speed</label>
             <input type="range" id="synthSpeed" min="0.1" max="3" step="0.1" value="1">
+            <span class="val" data-for="synthSpeed"></span>
         </div>
-    </div>
-    <div id="settings-tunnel" class="setting-group">
         <div class="setting-row">
-            <label>Tunnel Speed</label>
-            <input type="range" id="tunnelSpeed" min="0.5" max="5" step="0.5" value="1.5">
-        </div>
-    </div>
-    <div id="settings-ripples" class="setting-group">
-        <div class="setting-row">
-            <label>Rain Intensity</label>
-            <input type="range" id="rippleFreq" min="0.2" max="3" step="0.2" value="1">
+            <label>Mountain Height</label>
+            <input type="range" id="synthMtnHeight" min="0.3" max="3" step="0.1" value="1">
+            <span class="val" data-for="synthMtnHeight"></span>
         </div>
     </div>
 
-    <button id="startBtn">Launch Screensaver</button>
+    <!-- Cyber Tunnel -->
+    <div id="settings-tunnel" class="setting-group">
+        <div class="setting-row">
+            <label>Speed</label>
+            <input type="range" id="tunnelSpeed" min="0.5" max="5" step="0.5" value="1.5">
+            <span class="val" data-for="tunnelSpeed"></span>
+        </div>
+        <div class="setting-row">
+            <label>Ring Count</label>
+            <input type="range" id="tunnelRings" min="10" max="40" step="1" value="25">
+            <span class="val" data-for="tunnelRings"></span>
+        </div>
+        <div class="setting-row">
+            <label>Shape Sides</label>
+            <input type="range" id="tunnelSides" min="3" max="12" step="1" value="6">
+            <span class="val" data-for="tunnelSides"></span>
+        </div>
+    </div>
+
+    <!-- Water Ripples -->
+    <div id="settings-ripples" class="setting-group">
+        <div class="setting-row">
+            <label>Frequency</label>
+            <input type="range" id="rippleFreq" min="0.2" max="3" step="0.2" value="1">
+            <span class="val" data-for="rippleFreq"></span>
+        </div>
+        <div class="setting-row">
+            <label>Speed</label>
+            <input type="range" id="rippleSpeed" min="0.5" max="5" step="0.5" value="2">
+            <span class="val" data-for="rippleSpeed"></span>
+        </div>
+        <div class="setting-row">
+            <label>Max Size</label>
+            <input type="range" id="rippleMaxSize" min="30" max="250" step="10" value="100">
+            <span class="val" data-for="rippleMaxSize"></span>
+        </div>
+    </div>
+
+    <!-- Aurora Borealis -->
+    <div id="settings-aurora" class="setting-group">
+        <div class="setting-row">
+            <label>Curtains</label>
+            <input type="range" id="auroraCurtains" min="2" max="10" step="1" value="5">
+            <span class="val" data-for="auroraCurtains"></span>
+        </div>
+        <div class="setting-row">
+            <label>Speed</label>
+            <input type="range" id="auroraSpeed" min="0.2" max="3" step="0.1" value="1">
+            <span class="val" data-for="auroraSpeed"></span>
+        </div>
+        <div class="setting-row">
+            <label>Intensity</label>
+            <input type="range" id="auroraIntensity" min="0.3" max="2" step="0.1" value="1">
+            <span class="val" data-for="auroraIntensity"></span>
+        </div>
+    </div>
+
+    <!-- Plasma -->
+    <div id="settings-plasma" class="setting-group">
+        <div class="setting-row">
+            <label>Speed</label>
+            <input type="range" id="plasmaSpeed" min="0.2" max="3" step="0.1" value="1">
+            <span class="val" data-for="plasmaSpeed"></span>
+        </div>
+        <div class="setting-row">
+            <label>Scale</label>
+            <input type="range" id="plasmaScale" min="0.3" max="3" step="0.1" value="1">
+            <span class="val" data-for="plasmaScale"></span>
+        </div>
+    </div>
+
+    <!-- Galaxy Spiral -->
+    <div id="settings-galaxy" class="setting-group">
+        <div class="setting-row">
+            <label>Star Count</label>
+            <input type="range" id="galaxyStars" min="200" max="3000" step="100" value="1500">
+            <span class="val" data-for="galaxyStars"></span>
+        </div>
+        <div class="setting-row">
+            <label>Rotation Speed</label>
+            <input type="range" id="galaxySpeed" min="0.1" max="3" step="0.1" value="1">
+            <span class="val" data-for="galaxySpeed"></span>
+        </div>
+        <div class="setting-row">
+            <label>Spiral Arms</label>
+            <input type="range" id="galaxyArms" min="2" max="8" step="1" value="4">
+            <span class="val" data-for="galaxyArms"></span>
+        </div>
+    </div>
+
+    <!-- Julia Set -->
+    <div id="settings-julia" class="setting-group">
+        <div class="setting-row">
+            <label>Speed</label>
+            <input type="range" id="juliaSpeed" min="0.2" max="3" step="0.1" value="1">
+            <span class="val" data-for="juliaSpeed"></span>
+        </div>
+        <div class="setting-row">
+            <label>Zoom</label>
+            <input type="range" id="juliaZoom" min="0.3" max="3" step="0.1" value="1">
+            <span class="val" data-for="juliaZoom"></span>
+        </div>
+        <div class="setting-row">
+            <label>Detail</label>
+            <input type="range" id="juliaIter" min="30" max="150" step="10" value="60">
+            <span class="val" data-for="juliaIter"></span>
+        </div>
+    </div>
+
+    <!-- Mandelbrot -->
+    <div id="settings-mandelbrot" class="setting-group">
+        <div class="setting-row">
+            <label>Speed</label>
+            <input type="range" id="mbSpeed" min="0.2" max="3" step="0.1" value="1">
+            <span class="val" data-for="mbSpeed"></span>
+        </div>
+        <div class="setting-row">
+            <label>Detail</label>
+            <input type="range" id="mbIter" min="40" max="200" step="10" value="80">
+            <span class="val" data-for="mbIter"></span>
+        </div>
+        <div class="setting-row">
+            <label>Zoom Depth</label>
+            <input type="range" id="mbZoomDepth" min="2" max="12" step="0.5" value="6">
+            <span class="val" data-for="mbZoomDepth"></span>
+        </div>
+    </div>
+
+    <!-- Phoenix -->
+    <div id="settings-phoenix" class="setting-group">
+        <div class="setting-row">
+            <label>Speed</label>
+            <input type="range" id="phxSpeed" min="0.2" max="3" step="0.1" value="1">
+            <span class="val" data-for="phxSpeed"></span>
+        </div>
+        <div class="setting-row">
+            <label>Detail</label>
+            <input type="range" id="phxIter" min="30" max="150" step="10" value="60">
+            <span class="val" data-for="phxIter"></span>
+        </div>
+        <div class="setting-row">
+            <label>Distortion</label>
+            <input type="range" id="phxDistort" min="0" max="1" step="0.05" value="0.5">
+            <span class="val" data-for="phxDistort"></span>
+        </div>
+    </div>
+
+    <!-- Lightning Storm -->
+    <div id="settings-lightning" class="setting-group">
+        <div class="setting-row">
+            <label>Frequency</label>
+            <input type="range" id="lightFreq" min="0.2" max="3" step="0.2" value="1">
+            <span class="val" data-for="lightFreq"></span>
+        </div>
+        <div class="setting-row">
+            <label>Branches</label>
+            <input type="range" id="lightBranches" min="0" max="5" step="1" value="2">
+            <span class="val" data-for="lightBranches"></span>
+        </div>
+        <div class="setting-row">
+            <label>Intensity</label>
+            <input type="range" id="lightIntensity" min="0.3" max="2" step="0.1" value="1">
+            <span class="val" data-for="lightIntensity"></span>
+        </div>
+    </div>
+
+    <button id="startBtn">&#9654; Launch Screensaver</button>
 </div>
 
 <canvas id="canvas"></canvas>
