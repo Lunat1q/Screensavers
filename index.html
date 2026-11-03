@@ -268,6 +268,32 @@
         }
         .card.active .card-name { color: rgba(255,255,255,0.9); }
 
+        .setting-row select { flex: 1; width: auto; padding: 7px 34px 7px 12px; font-size: 13px; border-radius: 8px; }
+        #settings-burnin .setting-row label { min-width: 150px; }
+        .setting-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: #0077ff; cursor: pointer; }
+        .warn {
+            font-size: 12px; line-height: 1.5; text-align: left;
+            color: #ffb4b4; background: rgba(255, 60, 60, 0.1);
+            border: 1px solid rgba(255, 60, 60, 0.35); border-radius: 8px; padding: 10px 12px; margin: 4px 0 0;
+        }
+        .hint { font-size: 11px; color: rgba(255,255,255,0.35); text-align: left; margin: 4px 0 0; line-height: 1.5; }
+
+        #burnWarnDialog {
+            background: #10101a; color: #fff; border: 1px solid rgba(255, 60, 60, 0.4);
+            border-radius: 14px; padding: 24px; max-width: min(440px, 92vw);
+        }
+        #burnWarnDialog::backdrop { background: rgba(0, 0, 0, 0.75); }
+        #burnWarnDialog h3 { margin: 0 0 12px; font-weight: 500; color: #ff8a8a; }
+        #burnWarnDialog p { font-size: 14px; line-height: 1.55; color: rgba(255,255,255,0.8); margin: 0; }
+        .dialog-actions { display: flex; gap: 10px; }
+        button.secondary { background: rgba(255, 255, 255, 0.08); }
+
+        /* Tiny, blend-inverted so it reads on any color; moved regularly so it can't burn in itself */
+        #burnTime {
+            position: fixed; z-index: 5; pointer-events: none;
+            font: 12px 'Consolas', monospace; color: #fff; mix-blend-mode: difference; opacity: 0.6;
+        }
+
         canvas { display: block; }
     </style>
 </head>
@@ -299,6 +325,7 @@
             <option value="ripples">Water Ripples</option>
             <option value="lightning">Lightning Storm</option>
             <option value="win11">Windows 11 Update</option>
+            <option value="burnin">Burn-in Fix (Pixel Refresh)</option>
         </select>
         <div class="card-grid" id="cardGrid">
             <div class="card-category">Classic</div>
@@ -327,10 +354,12 @@
             <div class="card" data-value="lightning"><span class="card-icon">⚡</span><span class="card-name">Lightning</span></div>
             <div class="card-category">Fun</div>
             <div class="card" data-value="win11"><span class="card-icon">💻</span><span class="card-name">Win Update</span></div>
+            <div class="card-category">Utility</div>
+            <div class="card" data-value="burnin" title="Pixel Refresh: clears image retention / ghosting on LCDs"><span class="card-icon">🩹</span><span class="card-name">Burn-in Fix</span></div>
         </div>
     </div>
 
-    <div class="form-group">
+    <div class="form-group" id="colorGroup">
         <label for="colorPicker">Base Color</label>
         <input type="color" id="colorPicker" value="#00d2ff">
     </div>
@@ -700,9 +729,76 @@
         </div>
     </div>
 
+    <!-- Burn-in Fix / Pixel Refresh -->
+    <div id="settings-burnin" class="setting-group">
+        <div class="setting-row">
+            <label for="burnPattern">Pattern</label>
+            <select id="burnPattern">
+                <option value="auto">Auto (rotate all)</option>
+                <option value="white">Solid White</option>
+                <option value="cycle">Color Cycle</option>
+                <option value="bars">Moving Bars</option>
+                <option value="noise">Noise</option>
+            </select>
+        </div>
+        <div class="setting-row">
+            <label for="burnSpeed">Cycle Speed</label>
+            <select id="burnSpeed">
+                <option value="slow">Slow</option>
+                <option value="medium">Medium</option>
+                <option value="fast" disabled>Fast (needs fast flashing)</option>
+            </select>
+        </div>
+        <div class="setting-row">
+            <label for="burnDuration">Run For</label>
+            <select id="burnDuration">
+                <option value="30">30 min</option>
+                <option value="60">1 h</option>
+                <option value="120" selected>2 h</option>
+                <option value="240">4 h</option>
+                <option value="480">8 h</option>
+                <option value="0">Until stopped</option>
+            </select>
+        </div>
+        <div class="setting-row">
+            <label for="burnEnd">When Done</label>
+            <select id="burnEnd">
+                <option value="return">Return to screensaver</option>
+                <option value="off">Black screen, let display sleep</option>
+            </select>
+        </div>
+        <div class="setting-row">
+            <label for="burnExit">Exit On</label>
+            <select id="burnExit">
+                <option value="any">Any input</option>
+                <option value="esc">Esc key only</option>
+            </select>
+        </div>
+        <div class="setting-row">
+            <label for="burnShowTime">Show Time Left</label>
+            <input type="checkbox" id="burnShowTime">
+        </div>
+        <div class="setting-row">
+            <label for="burnFastFlash">Allow Fast Flashing</label>
+            <input type="checkbox" id="burnFastFlash" data-volatile>
+        </div>
+        <p id="burnFlashWarning" class="warn" hidden>&#9888; Photosensitivity warning: Fast speed flashes the whole screen more than 3 times per second. This can trigger seizures in people with photosensitive epilepsy. Do not use it if you or anyone who may see the screen is sensitive to flashing light.</p>
+        <p class="hint">Covers the monitor this window is on. For several monitors, open this page in a window on each one. Browsers can't power off the display, so "let display sleep" shows black and lets your OS power settings take over.</p>
+    </div>
+
     <button id="startBtn">&#9654; Launch Screensaver</button>
 </div>
 
+<dialog id="burnWarnDialog">
+    <h3>&#9888; Photosensitivity warning</h3>
+    <p id="burnWarnText"></p>
+    <div class="dialog-actions">
+        <button id="burnWarnCancel" class="secondary">Cancel</button>
+        <button id="burnWarnStart">I understand, start</button>
+    </div>
+</dialog>
+
+<div id="burnTime" hidden></div>
 <canvas id="canvas"></canvas>
 <script src="script.js"></script>
 </body>
