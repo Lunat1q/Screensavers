@@ -939,42 +939,111 @@ function drawTunnel(color) {
 }
 
 // --- Animation 12: Water Ripples ---
+// A heightfield wave simulation at 1/3 resolution. Each pixel refracts a moonlit night-sky
+// backdrop by the local surface slope and adds a specular glint, so drops read as real water.
+let rip = null;
+
+function initRipples(color) {
+    const cell = 3;
+    const w = Math.ceil(width / cell) + 2, h = Math.ceil(height / cell) + 2; // +2: border ring stays flat
+    const c = hexToRgb(color);
+    const bg = new Float32Array(w * h * 3);
+    const mx = w * 0.64, my = h * 0.18;
+    for (let y = 0; y < h; y++) {
+        const v = y / h;
+        const sky = 0.07 + 0.36 * (1 - v) * (1 - v); // tinted glow near the horizon, deep water below
+        for (let x = 0; x < w; x++) {
+            const ex = (x - mx) / (w * 0.03), ey = (y - my) / (h * 0.3);
+            const moon = Math.exp(-(ex * ex + ey * ey)) * 0.8 + Math.exp(-(ex * ex) / 30 - ey * ey) * 0.12;
+            const i = (y * w + x) * 3;
+            bg[i] = c.r * sky + (210 + c.r * 0.2) * moon;
+            bg[i + 1] = c.g * sky + (215 + c.g * 0.2) * moon;
+            bg[i + 2] = c.b * sky + (225 + c.b * 0.2) * moon;
+        }
+    }
+    for (let k = 0; k < w * h / 1500; k++) { // reflected stars, so the distortion has detail to bend
+        const i = ((Math.random() * h * 0.7 | 0) * w + (Math.random() * w | 0)) * 3;
+        const s = 30 + Math.random() * Math.random() * 200;
+        bg[i] += s; bg[i + 1] += s; bg[i + 2] += s;
+    }
+    const out = document.createElement('canvas');
+    out.width = w - 2;
+    out.height = h - 2;
+    const octx = out.getContext('2d');
+    const img = octx.createImageData(w - 2, h - 2);
+    for (let i = 3; i < img.data.length; i += 4) img.data[i] = 255;
+    rip = { color, width, height, w, h, bg, out, octx, img, cur: new Float32Array(w * h), prev: new Float32Array(w * h), acc: 0 };
+}
+
+function rippleDrop(x, y, r, amp) {
+    const { w, h, cur } = rip;
+    for (let j = Math.max(1, Math.floor(y - r)); j <= Math.min(h - 2, Math.ceil(y + r)); j++) {
+        for (let k = Math.max(1, Math.floor(x - r)); k <= Math.min(w - 2, Math.ceil(x + r)); k++) {
+            const d = Math.hypot(k - x, j - y) / r;
+            if (d < 1) cur[j * w + k] -= amp * (Math.cos(d * Math.PI) + 1) * 0.5;
+        }
+    }
+}
+
 function drawRipples(color) {
     const freq = parseFloat(document.getElementById('rippleFreq').value);
     const rippleSpeed = parseFloat(document.getElementById('rippleSpeed').value);
     const maxSize = parseFloat(document.getElementById('rippleMaxSize').value);
-    
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-    ctx.fillRect(0, 0, width, height);
-    
-    const rgb = hexToRgb(color);
-    
-    if (Math.random() < 0.05 * freq) {
-        particles.push({
-            x: Math.random() * width,
-            y: Math.random() * height,
-            radius: 0,
-            maxRadius: Math.random() * maxSize + maxSize * 0.3,
-            life: 1
-        });
+
+    if (particles.length === 0 || !rip || rip.color !== color || rip.width !== width || rip.height !== height) {
+        initRipples(color);
+        particles = [rip]; // resetCanvas() empties particles, which forces a rebuild here
     }
-    
-    for (let i = particles.length - 1; i >= 0; i--) {
-        let p = particles[i];
-        p.radius += rippleSpeed;
-        p.life -= 0.01;
-        
-        if (p.life <= 0) {
-            particles.splice(i, 1);
-            continue;
+    const now = performance.now();
+    const dt = Math.min(0.1, (now - (rip.last ?? now)) / 1000);
+    rip.last = now;
+    const { w, h, bg, img } = rip;
+
+    // Rain: on average freq * 2.5 drops per second, now and then a big plop
+    for (let n = freq * 2.5 * dt; Math.random() < n; n--) {
+        const big = Math.random() < 0.08;
+        const r = (1.5 + maxSize / 30 * (0.4 + Math.random() * 0.6)) * (big ? 1.8 : 1);
+        rippleDrop(1 + Math.random() * (w - 2), 1 + Math.random() * (h - 2), r, (big ? 30 : 18) + r * 2);
+    }
+
+    // Wave equation: 30 * speed steps per second, whatever the refresh rate
+    rip.acc += dt * 30 * rippleSpeed;
+    const steps = Math.min(8, rip.acc | 0);
+    rip.acc = rip.acc > 8 ? 0 : rip.acc - steps;
+    for (let s = 0; s < steps; s++) {
+        const cur = rip.cur, prev = rip.prev;
+        for (let y = 1; y < h - 1; y++) {
+            for (let i = y * w + 1, end = y * w + w - 1; i < end; i++) {
+                prev[i] = ((cur[i - 1] + cur[i + 1] + cur[i - w] + cur[i + w]) * 0.5 - prev[i]) * 0.985;
+            }
         }
-        
-        ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.life})`;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.ellipse(p.x, p.y, p.radius, p.radius * 0.5, 0, 0, Math.PI * 2);
-        ctx.stroke();
+        rip.cur = prev;
+        rip.prev = cur;
     }
+
+    // Shade: the slope bends the backdrop lookup and lights a glint from the upper left
+    const cur = rip.cur, d = img.data;
+    let o = 0;
+    for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+            const i = y * w + x;
+            const sx = cur[i - 1] - cur[i + 1], sy = cur[i - w] - cur[i + w];
+            let bx = (x + sx * 3) | 0, by = (y + sy * 3) | 0;
+            bx = bx < 0 ? 0 : bx >= w ? w - 1 : bx;
+            by = by < 0 ? 0 : by >= h ? h - 1 : by;
+            const b = (by * w + bx) * 3;
+            const l = sx * 0.6 + sy * 0.8;
+            const spec = l > 0 ? l * l * 3 : 0;
+            const shade = 1 + l * 0.06;
+            d[o] = bg[b] * shade + spec;
+            d[o + 1] = bg[b + 1] * shade + spec;
+            d[o + 2] = bg[b + 2] * shade + spec;
+            o += 4;
+        }
+    }
+    rip.octx.putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(rip.out, 0, 0, (w - 2) * 3, (h - 2) * 3); // 3 = cell size, a few px past the edge is fine
 }
 
 // --- Animation 13: Aurora Borealis ---
@@ -1498,79 +1567,248 @@ function drawPhoenix(color) {
     ctx.drawImage(plasmaCanvas, 0, 0, width, height);
     time += 0.008;
 }
-function drawLightningBolt(x1, y1, x2, y2, depth, intensity, rgb) {
-    let segments = 12;
-    let dx = (x2 - x1) / segments;
-    let dy = (y2 - y1) / segments;
 
-    ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${0.8 * intensity})`;
-    ctx.lineWidth = Math.max(1, 3 - depth);
-    ctx.shadowBlur = 15 - depth * 3;
-    ctx.shadowColor = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+// --- Animation 19: Lightning Storm ---
+// Bolts are built once (midpoint displacement + forking branches) and then re-strike a few times
+// while they fade, lighting the clouds around them from the inside.
+let storm = null;
 
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-
-    let px = x1, py = y1;
-    for (let i = 1; i <= segments; i++) {
-        let nx = x1 + dx * i + (Math.random() - 0.5) * (80 - depth * 20);
-        let ny = y1 + dy * i;
-        ctx.lineTo(nx, ny);
-
-        if (depth < 3 && Math.random() < 0.25) {
-            ctx.stroke();
-            drawLightningBolt(
-                nx, ny,
-                nx + (Math.random() - 0.5) * 150,
-                ny + Math.random() * 120 + 40,
-                depth + 1, intensity * 0.5, rgb
-            );
-            ctx.beginPath();
-            ctx.moveTo(nx, ny);
+// Tileable-in-x value noise fBm, 0..1
+function stormNoise(gw, gh, base, octaves) {
+    const P = 512, lat = new Float32Array(P * P).map(Math.random);
+    const out = new Float32Array(gw * gh);
+    const smooth = t => t * t * (3 - 2 * t);
+    for (let y = 0; y < gh; y++) {
+        for (let x = 0; x < gw; x++) {
+            let v = 0, amp = 0.5, norm = 0;
+            for (let o = 0; o < octaves; o++) {
+                const per = base << o; // lattice cells across the width at this octave, so x wraps cleanly
+                const fx = x / gw * per, fy = y / gw * per + o * 37;
+                const x0 = Math.floor(fx), y0 = Math.floor(fy), tx = smooth(fx - x0), ty = smooth(fy - y0);
+                const xa = x0 % per, xb = (x0 + 1) % per, ya = y0 % P, yb = (y0 + 1) % P;
+                const a = lat[ya * P + xa], b = lat[ya * P + xb], c = lat[yb * P + xa], d = lat[yb * P + xb];
+                v += amp * (a + (b - a) * tx + (c - a + (a - b - c + d) * tx) * ty);
+                norm += amp;
+                amp *= 0.5;
+            }
+            out[y * gw + x] = v / norm;
         }
-        px = nx; py = ny;
     }
-    ctx.stroke();
-    ctx.shadowBlur = 0;
+    return out;
+}
+
+function initStorm(color) {
+    const c = hexToRgb(color);
+    const mix = (a, b, t) => Math.round(a + (b - a) * t);
+    // Clouds at 1/6 resolution: one dark layer, one lit layer (same shape), and the shape mask
+    const s = 4, gw = Math.ceil(width / s), gh = Math.ceil(height * 0.7 / s);
+    const n = stormNoise(gw, gh, 3, 7);
+    const mk = () => { const cv = document.createElement('canvas'); cv.width = gw; cv.height = gh; return cv; };
+    const dark = mk(), lit = mk(), tmp = mk();
+    const dctx = dark.getContext('2d'), lctx = lit.getContext('2d');
+    const di = dctx.createImageData(gw, gh), li = lctx.createImageData(gw, gh);
+    for (let y = 0; y < gh; y++) {
+        const fall = Math.min(1, (1 - y / gh) * 1.6); // thick at the top, thinning out toward the bottom
+        for (let x = 0; x < gw; x++) {
+            const v = n[y * gw + x];
+            const dens = Math.max(0, Math.min(1, (v - 0.38) / 0.3)) * fall;
+            const k = (y * gw + x) * 4;
+            const g = Math.max(0.25, Math.min(1.4, 0.4 + (v - 0.45) * 3.5)); // billowy light and shadow inside the cloud
+            di.data[k] = mix(30, c.r, 0.05) * g; di.data[k + 1] = mix(32, c.g, 0.05) * g; di.data[k + 2] = mix(42, c.b, 0.05) * g;
+            di.data[k + 3] = dens * 255;
+            li.data[k] = mix(255, c.r, 0.45) * g * 0.8; li.data[k + 1] = mix(255, c.g, 0.45) * g * 0.8; li.data[k + 2] = mix(255, c.b, 0.45) * g * 0.8;
+            li.data[k + 3] = dens * 255;
+        }
+    }
+    dctx.putImageData(di, 0, 0);
+    lctx.putImageData(li, 0, 0);
+
+    // Ground: rolling hills silhouette along the bottom
+    const ground = new Float32Array(Math.ceil(width / 4) + 2);
+    const ph = [Math.random() * 9, Math.random() * 9, Math.random() * 9];
+    for (let i = 0; i < ground.length; i++) {
+        const x = i * 4 / width;
+        ground[i] = height * (0.9 - 0.05 * Math.sin(x * 5 + ph[0]) - 0.025 * Math.sin(x * 13 + ph[1]) - 0.01 * Math.sin(x * 37 + ph[2]));
+    }
+    const rain = Array.from({ length: Math.round(width * height / 6000) }, () => ({ x: Math.random() * width, y: Math.random() * height, v: 900 + Math.random() * 500 }));
+
+    storm = {
+        color, width, height, dark, lit, tmp, ground, rain, events: [], drift: 0, cooldown: 1,
+        tint: `${c.r}, ${c.g}, ${c.b}`,
+        core: `${mix(255, c.r, 0.15)}, ${mix(255, c.g, 0.15)}, ${mix(255, c.b, 0.15)}`
+    };
+}
+
+// Jagged polyline from a to b: halve every segment and nudge the midpoint sideways, finer each pass
+function stormCrack(ax, ay, bx, by, rough, passes) {
+    let pts = [ax, ay, bx, by];
+    let disp = Math.hypot(bx - ax, by - ay) * rough;
+    for (let p = 0; p < passes; p++, disp *= 0.6) { // 0.6 (not 0.5) keeps it jagged at small scales
+        const next = [pts[0], pts[1]];
+        for (let i = 0; i < pts.length - 2; i += 2) {
+            const x1 = pts[i], y1 = pts[i + 1], x2 = pts[i + 2], y2 = pts[i + 3];
+            const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy) || 1, o = (Math.random() - 0.5) * disp;
+            next.push((x1 + x2) / 2 - dy / L * o, (y1 + y2) / 2 + dx / L * o, x2, y2);
+        }
+        pts = next;
+    }
+    return pts;
+}
+
+function stormBolt(x0, y0, x1, y1, branches) {
+    const lines = [];
+    const grow = (pts, depth) => {
+        const path = new Path2D();
+        path.moveTo(pts[0], pts[1]);
+        for (let i = 2; i < pts.length; i += 2) path.lineTo(pts[i], pts[i + 1]);
+        lines.push({ path, depth });
+        if (depth >= 3) return;
+        const count = pts.length / 2;
+        for (let i = 2; i < count * 0.8; i++) {
+            if (Math.random() > branches * 0.05 / (depth + 1)) continue;
+            const x = pts[i * 2], y = pts[i * 2 + 1];
+            const j = Math.min(count - 1, i + 2) * 2;
+            const ang = Math.atan2(pts[j + 1] - y, pts[j] - x) + (Math.random() < 0.5 ? -1 : 1) * (0.35 + Math.random() * 0.6);
+            const len = Math.hypot(x1 - x, y1 - y) * (0.2 + Math.random() * 0.35) / (depth + 1);
+            grow(stormCrack(x, y, x + Math.cos(ang) * len, y + Math.sin(ang) * len, 0.3, 4), depth + 1);
+        }
+    };
+    grow(stormCrack(x0, y0, x1, y1, 0.26, 6), 0);
+    return lines;
 }
 
 function drawLightning(color) {
     const frequency = parseFloat(document.getElementById('lightFreq').value);
-    const maxBranches = parseInt(document.getElementById('lightBranches').value);
+    const branches = parseInt(document.getElementById('lightBranches').value);
     const intensity = parseFloat(document.getElementById('lightIntensity').value);
-    const rgb = hexToRgb(color);
 
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
-    ctx.fillRect(0, 0, width, height);
+    if (particles.length === 0 || !storm || storm.color !== color || storm.width !== width || storm.height !== height) {
+        initStorm(color);
+        particles = [storm]; // resetCanvas() empties particles, which forces a rebuild here
+    }
+    const now = performance.now();
+    const dt = Math.min(0.1, (now - (storm.last ?? now)) / 1000);
+    storm.last = now;
+    const S = storm;
+    const groundAt = x => S.ground[Math.max(0, Math.min(S.ground.length - 1, Math.round(x / 4)))];
 
-    // Ambient cloud glow
-    for (let i = 0; i < 4; i++) {
-        let cx = (Math.sin(time * 0.3 + i * 1.8) * 0.4 + 0.5) * width;
-        let cy = Math.sin(time * 0.2 + i * 2.5) * height * 0.1 + height * 0.12;
-        let grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 180);
-        grad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.025)`);
-        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(cx, cy, 180, 0, Math.PI * 2);
-        ctx.fill();
+    // New event: a ground strike, or a flicker hidden inside the clouds
+    S.cooldown -= dt * frequency;
+    if (S.cooldown <= 0) {
+        S.cooldown = 0.6 + Math.random() * 2.5;
+        const x = width * (0.1 + Math.random() * 0.8), y = height * (0.12 + Math.random() * 0.15);
+        const strike = Math.random() < 0.65;
+        const tx = x + (Math.random() - 0.5) * width * 0.3;
+        const pulses = [0];
+        for (let k = Math.random() * 3 | 0, t = 0; k > 0; k--) pulses.push(t += 0.06 + Math.random() * 0.12);
+        S.events.push({
+            x, y, born: now / 1000, pulses, strike,
+            lines: strike ? stormBolt(x, y, tx, groundAt(tx) + 6, branches) : [],
+            life: pulses[pulses.length - 1] + (strike ? 0.6 : 0.45),
+            radius: (strike ? 0.35 : 0.25 + Math.random() * 0.2) * width
+        });
     }
 
-    // Lightning strike
-    if (Math.random() < 0.02 * frequency) {
-        let startX = Math.random() * width;
-        drawLightningBolt(
-            startX, 0,
-            startX + (Math.random() - 0.5) * 200, height * (0.5 + Math.random() * 0.5),
-            0, intensity, rgb
-        );
+    // Brightness of each event: a sharp pulse per re-strike, decaying fast
+    let flash = 0;
+    for (let i = S.events.length - 1; i >= 0; i--) {
+        const e = S.events[i], t = now / 1000 - e.born;
+        if (t > e.life) { S.events.splice(i, 1); continue; }
+        let b = 0;
+        for (const p of e.pulses) if (t >= p) b = Math.max(b, Math.exp(-(t - p) * 14));
+        e.b = b * intensity * (e.strike ? 1 : 0.6);
+        flash = Math.max(flash, e.b);
+    }
 
-        // Flash effect
-        ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${0.04 * intensity})`;
+    // Sky, brightened by the flash
+    const sky = ctx.createLinearGradient(0, 0, 0, height);
+    sky.addColorStop(0, '#020308');
+    sky.addColorStop(1, `rgba(${S.tint}, 0.05)`);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, width, height);
+    if (flash > 0.01) {
+        ctx.fillStyle = `rgba(${S.core}, ${Math.min(0.2, flash * 0.07)})`;
         ctx.fillRect(0, 0, width, height);
     }
 
-    time += 0.01;
+    // Clouds drift slowly; each event lights the clouds around it
+    S.drift = (S.drift + dt * 0.6) % S.dark.width;
+    const sw = width / S.dark.width, sh = height * 0.7 / S.dark.height; // cloud texel -> screen px
+    const tile = (img, alpha) => {
+        ctx.globalAlpha = alpha;
+        ctx.drawImage(img, -S.drift * sw, 0, width, height * 0.7);
+        ctx.drawImage(img, width - S.drift * sw, 0, width, height * 0.7);
+        ctx.globalAlpha = 1;
+    };
+    tile(S.dark, 1);
+    const tctx = S.tmp.getContext('2d');
+    for (const e of S.events) {
+        if (e.b < 0.01) continue;
+        tctx.globalCompositeOperation = 'source-over';
+        tctx.clearRect(0, 0, S.tmp.width, S.tmp.height);
+        const gx = e.x / sw, gy = e.y / sh, gr = e.radius / sw;
+        const g = tctx.createRadialGradient(gx, gy, 0, gx, gy, gr);
+        g.addColorStop(0, `rgba(255,255,255,${Math.min(1, e.b)})`);
+        g.addColorStop(1, 'rgba(255,255,255,0)');
+        tctx.fillStyle = g;
+        tctx.fillRect(0, 0, S.tmp.width, S.tmp.height);
+        tctx.globalCompositeOperation = 'source-in';
+        const off = S.drift;
+        tctx.drawImage(S.lit, -off, 0);
+        tctx.drawImage(S.lit, S.tmp.width - off, 0);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.drawImage(S.tmp, 0, 0, width, height * 0.7);
+        ctx.globalCompositeOperation = 'source-over';
+    }
+    if (flash > 0.01) tile(S.lit, Math.min(0.35, flash * 0.15)); // the whole deck glows a little
+
+    // Bolts: wide soft glow, then a hot core; branches fade faster than the main channel
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineJoin = 'miter';
+    ctx.lineCap = 'round';
+    for (const e of S.events) {
+        if (!e.lines.length) continue;
+        const age = now / 1000 - e.born, linger = Math.max(0, 1 - age / e.life) * 0.25;
+        for (const l of e.lines) {
+            const b = Math.max(e.b, linger * (l.depth === 0 ? 1 : 0)) / (1 + l.depth * 0.8);
+            if (b < 0.01) continue;
+            const w = 2.4 / (1 + l.depth);
+            ctx.strokeStyle = `rgba(${S.tint}, ${0.05 * b})`; ctx.lineWidth = w * 14; ctx.stroke(l.path);
+            ctx.strokeStyle = `rgba(${S.tint}, ${0.22 * b})`; ctx.lineWidth = w * 4; ctx.stroke(l.path);
+            ctx.strokeStyle = `rgba(${S.core}, ${Math.min(1, b)})`; ctx.lineWidth = w; ctx.stroke(l.path);
+        }
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.lineCap = 'butt';
+
+    // Rain, lit up by the flash
+    ctx.strokeStyle = `rgba(${S.core}, ${0.08 + flash * 0.25})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (const r of S.rain) {
+        r.y += r.v * dt;
+        r.x -= r.v * dt * 0.15;
+        if (r.y > height) { r.y -= height + 20; r.x = Math.random() * width * 1.2; }
+        ctx.moveTo(r.x, r.y);
+        ctx.lineTo(r.x + 3, r.y - 20);
+    }
+    ctx.stroke();
+
+    // Ground silhouette, rim-lit during a flash
+    ctx.beginPath();
+    ctx.moveTo(0, height);
+    for (let i = 0; i < S.ground.length; i++) ctx.lineTo(i * 4, S.ground[i]);
+    ctx.lineTo(width, height);
+    ctx.closePath();
+    ctx.fillStyle = '#010102';
+    ctx.fill();
+    if (flash > 0.01) {
+        ctx.strokeStyle = `rgba(${S.tint}, ${Math.min(0.6, flash * 0.4)})`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+    }
 }
 
 // --- Animation 20: Delaunay Mesh (port of github.com/Lunat1q/Meshy) ---
@@ -1987,6 +2225,187 @@ function drawBurnin() {
     }
 }
 
+// --- Animation 21: 3D Pipes ---
+// Pipes grow cell by cell through a 3D grid, turning at random and never crossing themselves.
+// Every piece is a depth-sorted 2D drawing (painter's algorithm): tubes are stacked strokes
+// and joints stacked discs, each lighter and nudged toward the light, which reads as a shiny cylinder.
+let pipes = null;
+const PIPE_DIRS = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+
+function initPipes(color, colorMode) {
+    const ny = 11, nz = 11, nx = Math.max(8, Math.round(ny * width / height));
+    const side = () => (Math.random() < 0.5 ? -1 : 1);
+    const yaw = side() * (0.25 + Math.random() * 0.3), pitch = side() * (0.12 + Math.random() * 0.2);
+    pipes = {
+        color, colorMode, width, height, nx, ny, nz,
+        grid: new Uint8Array(nx * ny * nz),
+        items: [], live: [], filled: 0, fade: 0,
+        cy: Math.cos(yaw), sy: Math.sin(yaw), cp: Math.cos(pitch), sp: Math.sin(pitch),
+        dist: Math.max(nx, ny, nz) * 1.6
+    };
+    pipes.focal = Math.min(width / nx, height / ny) * pipes.dist * 0.85;
+}
+
+// Grid coords -> camera space: centered, turned by yaw then pitch, pushed away from the eye
+function pipeCam(x, y, z) {
+    const P = pipes;
+    x -= (P.nx - 1) / 2; y -= (P.ny - 1) / 2; z -= (P.nz - 1) / 2;
+    const x1 = x * P.cy + z * P.sy, z1 = z * P.cy - x * P.sy;
+    const y1 = y * P.cp - z1 * P.sp, z2 = z1 * P.cp + y * P.sp + P.dist;
+    return [width / 2 + x1 * P.focal / z2, height / 2 + y1 * P.focal / z2, z2];
+}
+
+function pipeColor(P) {
+    if (P.colorMode === 'base') {
+        const c = hexToRgb(P.color), k = 0.75 + Math.random() * 0.5;
+        return [c.r * k, c.g * k, c.b * k];
+    }
+    // Random saturated hue (HSL with s=0.85, l=0.5)
+    const h = Math.random() * 12;
+    const f = n => { const k = (n + h) % 12; return 255 * (0.5 - 0.425 * Math.max(-1, Math.min(k - 3, 9 - k, 1))); };
+    return [f(0), f(8), f(4)];
+}
+
+function pipeShades(rgb) {
+    const s = (k, w) => `rgb(${rgb.map(v => Math.min(255, Math.round(v * k + 255 * w))).join(',')})`;
+    return [s(0.25, 0), s(0.5, 0), s(0.78, 0), s(1, 0.05), s(0.55, 0.45)];
+}
+
+function pipeFree(x, y, z) {
+    const P = pipes;
+    return x >= 0 && y >= 0 && z >= 0 && x < P.nx && y < P.ny && z < P.nz && !P.grid[(z * P.ny + y) * P.nx + x];
+}
+
+function pipeTake(x, y, z) {
+    pipes.grid[(z * pipes.ny + y) * pipes.nx + x] = 1;
+    pipes.filled++;
+}
+
+function pipeAdd(item) {
+    const items = pipes.items, d = item.depth;
+    let lo = 0, hi = items.length; // keep sorted far -> near
+    while (lo < hi) { const m = (lo + hi) >> 1; if (items[m].depth > d) lo = m + 1; else hi = m; }
+    items.splice(lo, 0, item);
+}
+
+function pipeJoint(p, big) {
+    pipeAdd({ kind: 'ball', p: [p.x, p.y, p.z], r: big ? 0.34 : 0.24, shades: p.shades, depth: pipeCam(p.x, p.y, p.z)[2] });
+}
+
+function pipeSpawn() {
+    for (let tries = 0; tries < 40; tries++) {
+        const x = Math.random() * pipes.nx | 0, y = Math.random() * pipes.ny | 0, z = Math.random() * pipes.nz | 0;
+        if (!pipeFree(x, y, z)) continue;
+        pipeTake(x, y, z);
+        const p = { x, y, z, dir: Math.random() * 6 | 0, shades: pipeShades(pipeColor(pipes)), balls: Math.random() < 0.5, prog: 0, head: null };
+        pipeJoint(p, true);
+        pipes.live.push(p);
+        return true;
+    }
+    return false;
+}
+
+// Advance one cell; false when boxed in
+function pipeStep(p) {
+    const ok = d => pipeFree(p.x + PIPE_DIRS[d][0], p.y + PIPE_DIRS[d][1], p.z + PIPE_DIRS[d][2]);
+    let dir = p.dir;
+    if (!ok(dir) || Math.random() < 0.25) {
+        const opts = [0, 1, 2, 3, 4, 5].filter(d => (d ^ 1) !== p.dir && ok(d) && d !== p.dir);
+        if (opts.length) dir = opts[Math.random() * opts.length | 0];
+        else if (!ok(dir)) return false;
+    }
+    if (dir !== p.dir) pipeJoint(p, p.balls);
+    const [dx, dy, dz] = PIPE_DIRS[dir];
+    const a = [p.x, p.y, p.z], b = [p.x + dx, p.y + dy, p.z + dz];
+    p.dir = dir; p.x = b[0]; p.y = b[1]; p.z = b[2];
+    pipeTake(p.x, p.y, p.z);
+    p.head = { kind: 'seg', a, b, pipe: p, shades: p.shades, depth: pipeCam((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2)[2] };
+    pipeAdd(p.head);
+    return true;
+}
+
+function pipeDraw(it) {
+    const s = it.shades;
+    if (it.kind === 'ball') {
+        const [x, y, z] = pipeCam(...it.p), r = it.r * pipes.focal / z;
+        const k = [1, 0.8, 0.55, 0.32, 0.12];
+        for (let i = 0; i < 5; i++) {
+            const o = r * (1 - k[i]) * 0.55;
+            ctx.fillStyle = s[i];
+            ctx.beginPath();
+            ctx.arc(x - o, y - o, r * k[i], 0, Math.PI * 2);
+            ctx.fill();
+        }
+        return;
+    }
+    let b = it.b;
+    if (it.pipe.head === it && it.pipe.prog < 1) { // the growing tip
+        const t = it.pipe.prog;
+        b = [it.a[0] + (b[0] - it.a[0]) * t, it.a[1] + (b[1] - it.a[1]) * t, it.a[2] + (b[2] - it.a[2]) * t];
+    }
+    const [x1, y1, z1] = pipeCam(...it.a), [x2, y2, z2] = pipeCam(...b);
+    const r = 0.24 * pipes.focal * 2 / (z1 + z2);
+    let nx = y1 - y2, ny = x2 - x1;
+    const L = Math.hypot(nx, ny);
+    if (L < 0.5) return; // end-on, the joints cover it
+    nx /= L; ny /= L;
+    if (nx + ny > 0) { nx = -nx; ny = -ny; } // normal pointing toward the light (upper left)
+    const ex = (x2 - x1) / L * 1.5, ey = (y2 - y1) / L * 1.5; // overlap neighbours to hide AA seams
+    const k = [1, 0.75, 0.5, 0.28, 0.1];
+    for (let i = 0; i < 5; i++) {
+        const o = r * (1 - k[i]) * 0.6;
+        ctx.strokeStyle = s[i];
+        ctx.lineWidth = 2 * r * k[i];
+        ctx.beginPath();
+        ctx.moveTo(x1 - ex + nx * o, y1 - ey + ny * o);
+        ctx.lineTo(x2 + ex + nx * o, y2 + ey + ny * o);
+        ctx.stroke();
+    }
+}
+
+function drawPipes(color) {
+    const speed = parseFloat(document.getElementById('pipeSpeed').value);
+    const count = parseInt(document.getElementById('pipeCount').value);
+    const fill = parseFloat(document.getElementById('pipeFill').value) / 100;
+    const colorMode = document.getElementById('pipeColors').value;
+
+    if (particles.length === 0 || !pipes || pipes.color !== color || pipes.colorMode !== colorMode ||
+        pipes.width !== width || pipes.height !== height) {
+        initPipes(color, colorMode);
+        particles = [pipes]; // resetCanvas() empties particles, which forces a rebuild here
+    }
+    const P = pipes;
+    const now = performance.now();
+    const dt = Math.min(0.1, (now - (P.last ?? now)) / 1000);
+    P.last = now;
+
+    const full = P.filled >= fill * P.nx * P.ny * P.nz;
+    if (P.fade > 0 || (full && !P.live.length)) {
+        P.fade += dt / 1.5;
+        if (P.fade >= 1) { initPipes(color, colorMode); particles = [pipes]; return; }
+    } else {
+        while (!full && P.live.length < count && pipeSpawn());
+        if (!P.live.length && !full) P.fade = 0.001; // nowhere left to start: wipe and begin again
+        for (let i = P.live.length - 1; i >= 0; i--) {
+            const p = P.live[i];
+            p.prog += dt * speed * 4;
+            while (p.prog >= 1) {
+                p.prog -= 1;
+                if (full || !pipeStep(p)) { pipeJoint(p, true); p.prog = 1; P.live.splice(i, 1); break; }
+            }
+        }
+    }
+
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, width, height);
+    ctx.lineCap = 'butt';
+    for (const it of P.items) pipeDraw(it); // ponytail: full redraw each frame; cache settled pipes on a layer if it gets slow
+    if (P.fade > 0) {
+        ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(1, P.fade)})`;
+        ctx.fillRect(0, 0, width, height);
+    }
+}
+
 // --- Main Animation Loop ---
 function loop() {
     const type = typeSelect.value;
@@ -2033,6 +2452,8 @@ function loop() {
         drawPhoenix(color);
     } else if (type === 'lightning') {
         drawLightning(color);
+    } else if (type === 'pipes') {
+        drawPipes(color);
     } else if (type === 'mesh') {
         drawMesh(color);
     } else if (type === 'burnin') {

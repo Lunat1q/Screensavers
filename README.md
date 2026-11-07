@@ -40,8 +40,9 @@ All settings are stored in the page URL, so you can bookmark a setup or send it 
 | | **Phoenix** | The Phoenix fractal with a slowly drifting view. |
 | Scenes | **Synthwave** | Outrun sunset: striped sun, neon floor and wireframe canyon flying past. |
 | | **Cyber Tunnel** | Flying through a twisting tunnel of polygons. |
-| | **Ripples** | Ripples spreading on water. |
-| | **Lightning** | A storm with branching lightning strikes. |
+| | **Ripples** | Raindrops on a night lake: a real wave simulation that bends the moon's reflection. |
+| | **Lightning** | Forked bolts that re-strike and light up the storm clouds from inside, with rain and hills. |
+| | **3D Pipes** | Shiny pipes growing and turning through a 3D grid, like the old Windows screensaver. |
 | Fun | **Win Update** | A fake "Working on updates" screen (see below). |
 | Utility | **Burn-in Fix** | Pixel refresh patterns for image retention (see below). |
 

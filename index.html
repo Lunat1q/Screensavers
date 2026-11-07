@@ -358,6 +358,7 @@
             <option value="tunnel">Cyber Tunnel</option>
             <option value="ripples">Water Ripples</option>
             <option value="lightning">Lightning Storm</option>
+            <option value="pipes">3D Pipes</option>
             <option value="win11">Windows 11 Update</option>
             <option value="burnin">Burn-in Fix (Pixel Refresh)</option>
         </select>
@@ -387,6 +388,7 @@
             <div class="card" data-value="tunnel"><span class="card-icon">◎</span><span class="card-name">Cyber Tunnel</span></div>
             <div class="card" data-value="ripples"><span class="card-icon">💧</span><span class="card-name">Ripples</span></div>
             <div class="card" data-value="lightning"><span class="card-icon">⚡</span><span class="card-name">Lightning</span></div>
+            <div class="card" data-value="pipes"><span class="card-icon">🔧</span><span class="card-name">3D Pipes</span></div>
             <div class="card-category">Fun</div>
             <div class="card" data-value="win11"><span class="card-icon">💻</span><span class="card-name">Win Update</span></div>
             <div class="card-category">Utility</div>
@@ -766,6 +768,32 @@
             <label>Intensity</label>
             <input type="range" id="lightIntensity" min="0.3" max="2" step="0.1" value="1">
             <span class="val" data-for="lightIntensity"></span>
+        </div>
+    </div>
+
+    <!-- 3D Pipes -->
+    <div id="settings-pipes" class="setting-group">
+        <div class="setting-row">
+            <label>Speed</label>
+            <input type="range" id="pipeSpeed" min="0.5" max="10" step="0.5" value="3">
+            <span class="val" data-for="pipeSpeed"></span>
+        </div>
+        <div class="setting-row">
+            <label>Pipes at Once</label>
+            <input type="range" id="pipeCount" min="1" max="6" step="1" value="2">
+            <span class="val" data-for="pipeCount"></span>
+        </div>
+        <div class="setting-row">
+            <label>Fill %</label>
+            <input type="range" id="pipeFill" min="10" max="60" step="5" value="30">
+            <span class="val" data-for="pipeFill"></span>
+        </div>
+        <div class="setting-row">
+            <label for="pipeColors">Colors</label>
+            <select id="pipeColors">
+                <option value="random">Random</option>
+                <option value="base">Base Color</option>
+            </select>
         </div>
     </div>
 
