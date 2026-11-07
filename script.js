@@ -1193,7 +1193,13 @@ function drawGalaxy(color) {
     const cx = width / 2;
     const cy = height / 2;
     const R = Math.min(width, height) * 0.46;
-    const t = time * rotSpeed;
+    // Advance by real elapsed time (not per frame) so speed is the same on 60 Hz and 165 Hz displays,
+    // and accumulate so moving the slider changes speed smoothly instead of jumping the phase.
+    const now = performance.now();
+    const dt = Math.min(0.1, (now - (galaxy.last ?? now)) / 1000);
+    galaxy.last = now;
+    galaxy.t = (galaxy.t || 0) + dt * 0.96 * rotSpeed; // 0.96/s = the old 0.016 per frame at 60 fps
+    const t = galaxy.t;
     const pattern = t * 0.05;                      // the arm pattern turns slowly
     const incl = 0.85 + Math.sin(t * 0.02) * 0.15; // and the viewing tilt gently wobbles
     const cosI = Math.cos(incl), sinI = Math.sin(incl);
@@ -1201,7 +1207,7 @@ function drawGalaxy(color) {
     const N = armCount;
 
     for (const b of galaxy.bodies) {
-        const M = b.phase + t * 0.35 / (0.08 + b.a);  // differential rotation: inner orbits are faster
+        const M = b.phase + t * 0.35 / (0.2 + b.a);   // differential rotation: inner orbits are faster, but no core whirl
         const th = M - (b.kind === 'bulge' ? 0 : 0.8 / N) * Math.sin(N * M); // stars slow down (pile up) on arm crests
         const twist = 2.6 * Math.log(1 + b.a * 8);    // log-spiral arm winding
         const r = b.a * (1 + b.e * Math.cos(N * th)) * R;
@@ -1256,7 +1262,6 @@ function drawGalaxy(color) {
 
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
-    time += 0.016;
 }
 
 // --- Animation 16: Julia Set ---
