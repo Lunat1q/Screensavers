@@ -294,6 +294,23 @@
             font: 12px 'Consolas', monospace; color: #fff; mix-blend-mode: difference; opacity: 0.6;
         }
 
+        .mesh-overlay {
+            position: fixed; top: 12px; left: 12px; z-index: 20; pointer-events: none;
+            background: rgba(10, 10, 18, 0.82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 10px;
+            padding: 12px 16px; font-size: 12px; color: rgba(255, 255, 255, 0.75);
+        }
+        .mesh-overlay b { display: block; margin-bottom: 8px; font-weight: 600; color: #fff; }
+        .mesh-overlay .keys { display: grid; grid-template-columns: auto auto; gap: 5px 12px; align-items: center; }
+        .mesh-overlay kbd {
+            justify-self: end; font: 11px 'Consolas', monospace; color: #fff;
+            background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 4px; padding: 1px 6px;
+        }
+        .mesh-overlay .hint { margin-top: 10px; }
+        #meshStats { left: auto; right: 12px; font-family: 'Consolas', monospace; }
+        #meshTip { top: auto; bottom: 12px; animation: meshTip 4s forwards; }
+        @keyframes meshTip { 0%, 75% { opacity: 1; } 100% { opacity: 0; } }
+
         canvas { display: block; }
     </style>
 </head>
@@ -317,6 +334,7 @@
             <option value="neon">Neon Waves</option>
             <option value="plasma">Plasma</option>
             <option value="aurora">Aurora Borealis</option>
+            <option value="mesh">Delaunay Mesh</option>
             <option value="julia">Julia Set</option>
             <option value="mandelbrot">Mandelbrot</option>
             <option value="phoenix">Phoenix</option>
@@ -343,6 +361,7 @@
             <div class="card" data-value="neon"><span class="card-icon">〰️</span><span class="card-name">Neon Waves</span></div>
             <div class="card" data-value="plasma"><span class="card-icon">🔮</span><span class="card-name">Plasma</span></div>
             <div class="card" data-value="aurora"><span class="card-icon">🌈</span><span class="card-name">Aurora</span></div>
+            <div class="card" data-value="mesh" title="Based on github.com/Lunat1q/Meshy. Set Base Color to white for the original full-RGB look."><span class="card-icon">🕸️</span><span class="card-name">Mesh</span></div>
             <div class="card-category">Fractals</div>
             <div class="card" data-value="julia"><span class="card-icon">🔷</span><span class="card-name">Julia Set</span></div>
             <div class="card" data-value="mandelbrot"><span class="card-icon">🪰</span><span class="card-name">Mandelbrot</span></div>
@@ -729,6 +748,46 @@
         </div>
     </div>
 
+    <!-- Delaunay Mesh -->
+    <div id="settings-mesh" class="setting-group">
+        <div class="setting-row">
+            <label for="meshMode">Color Mode</label>
+            <select id="meshMode">
+                <option value="gradient">Gradient</option>
+                <option value="random">Random</option>
+                <option value="circles">Animated Circles</option>
+            </select>
+        </div>
+        <div class="setting-row">
+            <label>Points</label>
+            <input type="range" id="meshCount" min="100" max="5000" step="100" value="2500">
+            <span class="val" data-for="meshCount"></span>
+        </div>
+        <div class="setting-row">
+            <label>Speed</label>
+            <input type="range" id="meshSpeed" min="0.1" max="5" step="0.1" value="1">
+            <span class="val" data-for="meshSpeed"></span>
+        </div>
+        <div class="setting-row">
+            <label>Trail Fade</label>
+            <input type="range" id="meshTrail" min="0.01" max="1" step="0.01" value="0.05">
+            <span class="val" data-for="meshTrail"></span>
+        </div>
+        <div class="setting-row">
+            <label for="meshLines">Lines</label>
+            <input type="checkbox" id="meshLines" checked>
+        </div>
+        <div class="setting-row">
+            <label for="meshFill">Triangles</label>
+            <input type="checkbox" id="meshFill">
+        </div>
+        <div class="setting-row">
+            <label for="meshDots">Points</label>
+            <input type="checkbox" id="meshDots">
+        </div>
+        <p class="hint">Base Color caps each RGB channel. White gives the full-color look of the original Meshy. Right-click the background or press H for hotkeys.</p>
+    </div>
+
     <!-- Burn-in Fix / Pixel Refresh -->
     <div id="settings-burnin" class="setting-group">
         <div class="setting-row">
@@ -799,7 +858,29 @@
 </dialog>
 
 <div id="burnTime" hidden></div>
+
+<div id="meshHelp" class="mesh-overlay" hidden>
+    <b>Mesh hotkeys</b>
+    <div class="keys">
+        <kbd>Space</kbd><span>add points</span>
+        <kbd>Enter</kbd><span>remove points</span>
+        <kbd>S</kbd><span>show stats</span>
+        <kbd>L</kbd><span>toggle lines</span>
+        <kbd>T</kbd><span>toggle triangles</span>
+        <kbd>P</kbd><span>toggle points</span>
+        <kbd>R G B</kbd><span>toggle red / green / blue channel</span>
+        <kbd>1 2 3</kbd><span>gradient / random / circles colors</span>
+        <kbd>A</kbd><span>pause / resume animation</span>
+        <kbd>[ ]</kbd><span>longer / shorter trail</span>
+        <kbd>+ −</kbd><span>faster / slower points</span>
+        <kbd>H</kbd><span>toggle this help</span>
+    </div>
+    <p class="hint">Right-click or H to hide &middot; Esc to exit</p>
+</div>
+<div id="meshStats" class="mesh-overlay" hidden></div>
+<div id="meshTip" class="mesh-overlay" hidden>Right-click or press H for hotkeys</div>
 <canvas id="canvas"></canvas>
+<script src="delaunator.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
