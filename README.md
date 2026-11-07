@@ -38,7 +38,7 @@ All settings are stored in the page URL, so you can bookmark a setup or send it 
 | Fractals | **Julia Set** | A Julia set whose shape morphs over time. |
 | | **Mandelbrot** | Zooms in and out of the Mandelbrot set. |
 | | **Phoenix** | The Phoenix fractal with a slowly drifting view. |
-| Scenes | **Synthwave** | A retro sun over a neon grid valley. |
+| Scenes | **Synthwave** | Outrun sunset: striped sun, neon floor and wireframe canyon flying past. |
 | | **Cyber Tunnel** | Flying through a twisting tunnel of polygons. |
 | | **Ripples** | Ripples spreading on water. |
 | | **Lightning** | A storm with branching lightning strikes. |
