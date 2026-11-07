@@ -1176,7 +1176,7 @@ function initGalaxy(starCount, armCount, color) {
 
 function drawGalaxy(color) {
     const starCount = parseInt(document.getElementById('galaxyStars').value);
-    const rotSpeed = parseFloat(document.getElementById('galaxySpeed').value);
+    const rotSpeed = parseFloat(document.getElementById('galaxySpeed').value) / 10; // slider 1 = old 0.1, 30 = old 3
     const armCount = parseInt(document.getElementById('galaxyArms').value);
 
     if (particles.length === 0 || !galaxy || galaxy.starCount !== starCount || galaxy.armCount !== armCount ||
