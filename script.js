@@ -1046,7 +1046,7 @@ function drawGalaxy(color) {
         const th = M - (b.kind === 'bulge' ? 0 : 0.8 / N) * Math.sin(N * M); // stars slow down (pile up) on arm crests
         const twist = 2.6 * Math.log(1 + b.a * 8);    // log-spiral arm winding
         const r = b.a * (1 + b.e * Math.cos(N * th)) * R;
-        const ang = th + twist + pattern;
+        const ang = th - twist + pattern;   // winding opposes rotation: arms trail, like real spirals
         const gx = Math.cos(ang) * r;
         const gy = Math.sin(ang) * r * cosI + b.z * R * sinI;
         b.x = cx + gx * cosR - gy * sinR;
