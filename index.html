@@ -301,9 +301,25 @@
             padding: 12px 16px; font-size: 12px; color: rgba(255, 255, 255, 0.75);
         }
         .mesh-overlay b { display: block; margin-bottom: 8px; font-weight: 600; color: #fff; }
-        .mesh-overlay .keys { display: grid; grid-template-columns: auto auto; gap: 5px 12px; align-items: center; }
+        #meshHelp {
+            pointer-events: auto; cursor: default;
+            max-width: calc(100vw - 24px); max-height: calc(100vh - 24px); overflow-y: auto;
+        }
+        .mesh-overlay .keys { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+        .mesh-overlay button {
+            width: auto; margin: 0; padding: 6px 8px;
+            display: flex; align-items: center; gap: 8px; text-align: left;
+            font: inherit; font-size: 12px; font-weight: 400; letter-spacing: 0; text-transform: none;
+            color: rgba(255, 255, 255, 0.8); background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 6px;
+            touch-action: manipulation; user-select: none; -webkit-user-select: none;
+        }
+        .mesh-overlay button:hover { transform: none; box-shadow: none; filter: none; background: rgba(255, 255, 255, 0.1); }
+        .mesh-overlay button:active { background: rgba(0, 119, 255, 0.25); }
+        .mesh-overlay button.mesh-settings { width: 100%; margin-top: 8px; justify-content: center; }
+        @media (pointer: coarse) { .mesh-overlay button { padding: 10px; font-size: 14px; } }
         .mesh-overlay kbd {
-            justify-self: end; font: 11px 'Consolas', monospace; color: #fff;
+            min-width: 2.8em; text-align: center; font: 11px 'Consolas', monospace; color: #fff;
             background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 4px; padding: 1px 6px;
         }
         .mesh-overlay .hint { margin-top: 10px; }
@@ -785,7 +801,7 @@
             <label for="meshDots">Points</label>
             <input type="checkbox" id="meshDots">
         </div>
-        <p class="hint">Base Color caps each RGB channel. White gives the full-color look of the original Meshy. Right-click the background or press H for hotkeys.</p>
+        <p class="hint">Base Color caps each RGB channel. White gives the full-color look of the original Meshy. Right-click the background or press H for hotkeys. On touch screens, tap the mesh for on-screen controls.</p>
     </div>
 
     <!-- Burn-in Fix / Pixel Refresh -->
@@ -859,23 +875,31 @@
 
 <div id="burnTime" hidden></div>
 
+<!-- Mesh controls: each button runs the same action as its hotkey (works with touch and mouse) -->
 <div id="meshHelp" class="mesh-overlay" hidden>
-    <b>Mesh hotkeys</b>
+    <b>Mesh controls</b>
     <div class="keys">
-        <kbd>Space</kbd><span>add points</span>
-        <kbd>Enter</kbd><span>remove points</span>
-        <kbd>S</kbd><span>show stats</span>
-        <kbd>L</kbd><span>toggle lines</span>
-        <kbd>T</kbd><span>toggle triangles</span>
-        <kbd>P</kbd><span>toggle points</span>
-        <kbd>R G B</kbd><span>toggle red / green / blue channel</span>
-        <kbd>1 2 3</kbd><span>gradient / random / circles colors</span>
-        <kbd>A</kbd><span>pause / resume animation</span>
-        <kbd>[ ]</kbd><span>longer / shorter trail</span>
-        <kbd>+ −</kbd><span>faster / slower points</span>
-        <kbd>H</kbd><span>toggle this help</span>
+        <button data-key="Space"><kbd>Space</kbd>add points</button>
+        <button data-key="Enter"><kbd>Enter</kbd>remove points</button>
+        <button data-key="Equal"><kbd>+</kbd>faster</button>
+        <button data-key="Minus"><kbd>&minus;</kbd>slower</button>
+        <button data-key="BracketLeft"><kbd>[</kbd>longer trail</button>
+        <button data-key="BracketRight"><kbd>]</kbd>shorter trail</button>
+        <button data-key="KeyL"><kbd>L</kbd>lines</button>
+        <button data-key="KeyT"><kbd>T</kbd>triangles</button>
+        <button data-key="KeyP"><kbd>P</kbd>points</button>
+        <button data-key="KeyA"><kbd>A</kbd>pause</button>
+        <button data-key="KeyR"><kbd>R</kbd>red channel</button>
+        <button data-key="KeyG"><kbd>G</kbd>green channel</button>
+        <button data-key="KeyB"><kbd>B</kbd>blue channel</button>
+        <button data-key="KeyS"><kbd>S</kbd>stats</button>
+        <button data-key="Digit1"><kbd>1</kbd>gradient</button>
+        <button data-key="Digit2"><kbd>2</kbd>random colors</button>
+        <button data-key="Digit3"><kbd>3</kbd>circles</button>
+        <button data-key="KeyH"><kbd>H</kbd>close</button>
     </div>
-    <p class="hint">Right-click or H to hide &middot; Esc to exit</p>
+    <button class="mesh-settings" data-key="ShowSettings">&#9881; All settings</button>
+    <p class="hint">Hold a button to repeat. Right-click, H or tap the background to hide &middot; Esc to exit</p>
 </div>
 <div id="meshStats" class="mesh-overlay" hidden></div>
 <div id="meshTip" class="mesh-overlay" hidden>Right-click or press H for hotkeys</div>

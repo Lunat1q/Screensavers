@@ -91,7 +91,9 @@ It covers the monitor the window is on. For several monitors, open the page in a
 
 ### Mesh hotkeys
 
-Mesh started as a separate project, [Meshy](https://github.com/Lunat1q/Meshy), which is now archived. Its hotkeys work here while the animation is showing. Right-click the background or press `H` to see the list.
+Mesh started as a separate project, [Meshy](https://github.com/Lunat1q/Meshy), which is now archived. Its hotkeys work here while the animation is showing. Right-click the background or press `H` to open the controls panel, which lists every hotkey as a button you can click.
+
+On phones and tablets, tap the mesh to open the same panel. Hold a button to repeat it (add points, speed, trail), and use **All settings** to get back to the full settings panel.
 
 | Key | Action |
 |---|---|
@@ -103,7 +105,7 @@ Mesh started as a separate project, [Meshy](https://github.com/Lunat1q/Meshy), w
 | `[` / `]` | Longer / shorter trail |
 | `+` / `-` | Faster / slower points |
 | `S` | Show point count and FPS |
-| `H` or right-click | Show or hide the hotkey help |
+| `H`, right-click or tap | Show or hide the controls panel |
 
 For the original full-color look, set Base Color to white.
 

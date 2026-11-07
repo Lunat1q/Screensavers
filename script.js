@@ -158,7 +158,7 @@ function resetIdleTimer(e) {
         if (burnShouldExit(e)) exitBurnin();
         return;
     }
-    if (e && meshHotkey(e)) return;
+    if (e && (meshHotkey(e) || meshTap(e))) return;
     if (isExplicitLaunch) return;
     if (isFullscreen() && e && e.type === 'mousemove') return;
 
@@ -1401,7 +1401,9 @@ const MESH_KEYS = {
     NumpadAdd: () => meshNudge('meshSpeed', 0.1),
     Minus: () => meshNudge('meshSpeed', -0.1),
     NumpadSubtract: () => meshNudge('meshSpeed', -0.1),
+    ShowSettings: () => { meshHelp.hidden = true; resetIdleTimer(); }, // button only, no key has this code
 };
+const MESH_REPEAT = new Set(['Space', 'Enter', 'Equal', 'Minus', 'BracketLeft', 'BracketRight']);
 
 // true = key consumed (so it doesn't wake the settings panel)
 function meshHotkey(e) {
@@ -1414,15 +1416,42 @@ function meshHotkey(e) {
     return true;
 }
 
+// Touch: tapping the mesh opens its controls instead of the settings panel (which has its own button there)
+let meshTouchAt = -1e9;
+window.addEventListener('touchstart', () => { meshTouchAt = performance.now(); }, { passive: true });
+function meshTap(e) {
+    if (typeSelect.value !== 'mesh' || e.type !== 'click' || performance.now() - meshTouchAt > 1000) return false;
+    if (e.target.closest('#ui, #meshHelp')) return false;
+    meshToggle(meshHelp);
+    return true;
+}
+
+// On-screen buttons, held ones repeat (like Meshy's mobile panel)
+let meshRepeat;
+const meshStopRepeat = () => clearInterval(meshRepeat);
+meshHelp.addEventListener('pointerdown', e => {
+    const btn = e.target.closest('button[data-key]');
+    if (!btn) return;
+    e.preventDefault(); // keep focus off the button, so Space/Enter stay hotkeys
+    const fn = MESH_KEYS[btn.dataset.key];
+    fn();
+    meshStopRepeat();
+    if (MESH_REPEAT.has(btn.dataset.key)) meshRepeat = setInterval(fn, 80);
+});
+window.addEventListener('pointerup', meshStopRepeat);
+window.addEventListener('pointercancel', meshStopRepeat);
+meshHelp.addEventListener('click', e => e.stopPropagation()); // don't wake the settings panel
+
 window.addEventListener('contextmenu', e => {
     if (typeSelect.value !== 'mesh' || e.target.closest('#ui')) return;
     e.preventDefault();
-    meshToggle(meshHelp);
+    if (!e.target.closest('#meshHelp')) meshToggle(meshHelp); // long-press on a button must not close the panel
 });
 typeSelect.addEventListener('change', () => {
     if (typeSelect.value !== 'mesh') meshHelp.hidden = meshStatsEl.hidden = meshTip.hidden = true;
 });
 function showMeshTip() {
+    meshTip.textContent = matchMedia('(pointer: coarse)').matches ? 'Tap the mesh for controls' : 'Right-click or press H for hotkeys';
     meshTip.hidden = true;
     void meshTip.offsetWidth; // restart the fade animation
     meshTip.hidden = false;
