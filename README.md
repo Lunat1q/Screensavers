@@ -29,7 +29,7 @@ All settings are stored in the page URL, so you can bookmark a setup or send it 
 | | **Flow Field** | Particles carried by a moving vector field. |
 | | **Cosmic Warp** | Flying through a star field. |
 | | **Fireworks** | Rockets bursting into sparks with gravity. |
-| | **Galaxy** | A rotating spiral galaxy with a glowing core. |
+| | **Galaxy** | A tilted spiral galaxy: stars orbit through density-wave arms with gas glow, dust lanes and young blue stars. |
 | Waves & Patterns | **Harmonograph** | A looping, rotating curve with trails. |
 | | **Neon Waves** | Layered glowing sine waves. |
 | | **Plasma** | Classic color plasma. |
