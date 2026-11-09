@@ -2406,6 +2406,316 @@ function drawPipes(color) {
     }
 }
 
+// Seconds since this state's previous frame, capped so a background tab doesn't jump
+function frameDt(s) {
+    const now = performance.now();
+    const dt = Math.min(0.1, (now - (s.last ?? now)) / 1000);
+    s.last = now;
+    return dt;
+}
+
+// Base color, its hue rotated by a third of the wheel, and a 3-stop ramp between them and white
+function duoRamp(color, t) {
+    const c = hexToRgb(color), a = [c.b, c.r, c.g], b = [c.r, c.g, c.b];
+    return t < 0.5 ? a.map((v, i) => v + (b[i] - v) * t * 2) : b.map(v => v + (255 - v) * (t - 0.5) * 1.4);
+}
+
+// --- Animation 22: Strange Attractors ---
+// Thousands of particles follow a chaotic ODE in 3D; additive trails trace out the attractor's shape.
+let attractor = null;
+const ATTRACTORS = {
+    lorenz: { dt: 0.005, scale: 25, c: [0, 0, 25], f(x, y, z, o) { o[0] = 10 * (y - x); o[1] = x * (28 - z) - y; o[2] = x * y - 8 / 3 * z; } },
+    thomas: { dt: 0.045, scale: 4, c: [0, 0, 0], f(x, y, z, o) { o[0] = Math.sin(y) - 0.208 * x; o[1] = Math.sin(z) - 0.208 * y; o[2] = Math.sin(x) - 0.208 * z; } },
+    aizawa: { dt: 0.01, scale: 1.9, c: [0, 0, 0.5], f(x, y, z, o) {
+        o[0] = (z - 0.7) * x - 3.5 * y; o[1] = 3.5 * x + (z - 0.7) * y;
+        o[2] = 0.6 + 0.95 * z - z * z * z / 3 - (x * x + y * y) * (1 + 0.25 * z) + 0.1 * z * x * x * x;
+    } },
+    halvorsen: { dt: 0.005, scale: 13, c: [-2.5, -2.5, -2.5], f(x, y, z, o) {
+        o[0] = -1.89 * x - 4 * y - 4 * z - y * y; o[1] = -1.89 * y - 4 * z - 4 * x - z * z; o[2] = -1.89 * z - 4 * x - 4 * y - x * x;
+    } }
+};
+
+function drawAttractor(color) {
+    const kind = document.getElementById('attrKind').value;
+    const n = parseInt(document.getElementById('attrCount').value);
+    const speed = parseFloat(document.getElementById('attrSpeed').value);
+    const trail = parseFloat(document.getElementById('attrTrail').value);
+
+    if (particles.length === 0 || !attractor || attractor.n !== n) {
+        attractor = {
+            n, pos: new Float32Array(n * 3).map(() => Math.random() - 0.5), scr: new Float32Array(n * 2).fill(NaN),
+            t: 0, rot: Math.random() * 6, scale: 0, c: [0, 0, 0], vmax: 1e-9
+        };
+        particles = [attractor]; // resetCanvas() empties particles, which forces a rebuild here
+    }
+    const A = attractor, dt = frameDt(A), k = dt * 60;
+    const names = Object.keys(ATTRACTORS);
+    const S = ATTRACTORS[kind === 'cycle' ? names[Math.floor(A.t / 40) % names.length] : kind] || ATTRACTORS.lorenz;
+    A.t += dt;
+    A.rot += dt * 0.12;
+
+    // Ease the camera toward the current system's size and center so switches glide
+    const e = A.scale ? 1 - Math.exp(-dt * 1.2) : 1;
+    if (!A.scale) A.pos.forEach((v, i) => { A.pos[i] = S.c[i % 3] + v * S.scale * 1.5; }); // first frame: scatter across the system
+    A.scale += (S.scale - A.scale) * e;
+    for (let i = 0; i < 3; i++) A.c[i] += (S.c[i] - A.c[i]) * e;
+
+    ctx.globalCompositeOperation = 'source-over';
+    // Fade at 30 Hz whatever the refresh rate: tiny per-frame alphas round to nothing on an 8-bit canvas and leave ghosts
+    A.fade = (A.fade || 0) + dt;
+    if (A.fade >= 1 / 30) {
+        ctx.fillStyle = `rgba(0, 0, 0, ${1 - Math.pow(1 - trail, A.fade * 60)})`;
+        ctx.fillRect(0, 0, width, height);
+        A.fade = 0;
+    }
+
+    const B = 24, paths = Array.from({ length: B }, () => new Path2D());
+    const o = [0, 0, 0], h = S.dt * speed * k / 2, lim = (S.scale * 6) ** 2;
+    const cr = Math.cos(A.rot), sr = Math.sin(A.rot), cp = Math.cos(0.35), sp = Math.sin(0.35);
+    const unit = Math.min(width, height) * 0.46, { pos, scr } = A;
+    let fmax = 0;
+    for (let i = 0; i < n; i++) {
+        let x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2], skip = false;
+        for (let s = 0; s < 2; s++) { S.f(x, y, z, o); x += o[0] * h; y += o[1] * h; z += o[2] * h; }
+        if (!(x * x + y * y + z * z < lim)) { // flew off (or NaN): drop it back near the origin
+            x = Math.random() - 0.5; y = Math.random() - 0.5; z = Math.random() - 0.5; skip = true;
+        }
+        pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
+        const v = Math.hypot(o[0], o[1], o[2]) * S.dt / S.scale;
+        if (v > fmax) fmax = v;
+
+        const X = (x - A.c[0]) / A.scale, Y = (y - A.c[1]) / A.scale, Z = (z - A.c[2]) / A.scale; // z is up
+        const x1 = X * cr - Y * sr, d = X * sr + Y * cr;
+        const pf = unit * 3.2 / (3.2 + d * cp + Z * sp);
+        const sx = width / 2 + x1 * pf, sy = height / 2 + (d * sp - Z * cp) * pf;
+        const ox = scr[i * 2], oy = scr[i * 2 + 1];
+        if (ox === ox && !skip) {
+            const p = paths[Math.min(B - 1, Math.sqrt(v / A.vmax) * B | 0)];
+            p.moveTo(ox, oy);
+            p.lineTo(sx, sy);
+        }
+        scr[i * 2] = skip ? NaN : sx; scr[i * 2 + 1] = sy;
+    }
+    A.vmax = Math.max(A.vmax * 0.98, fmax);
+
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineWidth = Math.max(1, height / 900);
+    ctx.lineCap = 'round';
+    for (let b = 0; b < B; b++) {
+        ctx.strokeStyle = `rgba(${duoRamp(color, b / (B - 1)).map(Math.round).join(',')}, 0.5)`;
+        ctx.stroke(paths[b]);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+}
+
+// --- Animation 23: Silk ---
+// A Peter de Jong attractor drawn as a density map: every frame a few hundred thousand orbit points
+// are binned into a buffer that fades slowly, while the four map parameters drift so the shape flows.
+let silk = null;
+
+function drawSilk(color) {
+    const speed = parseFloat(document.getElementById('silkSpeed').value);
+    const points = parseFloat(document.getElementById('silkPoints').value) * 100000;
+    const q = Math.ceil(height / 600); // buffer of at most 600 rows keeps the per-pixel passes cheap
+    const bw = Math.ceil(width / q), bh = Math.ceil(height / q);
+
+    if (particles.length === 0 || !silk || silk.bw !== bw || silk.bh !== bh) {
+        const cv = document.createElement('canvas');
+        cv.width = bw; cv.height = bh;
+        const cx = cv.getContext('2d'), img = cx.createImageData(bw, bh);
+        silk = { bw, bh, cv, cx, img, px: new Uint32Array(img.data.buffer), dens: new Float32Array(bw * bh), tint: new Float32Array(bw * bh), t: Math.random() * 100, max: 1 };
+        particles = [silk];
+    }
+    const S = silk, dt = frameDt(S), { dens, tint, px } = S;
+    S.t += dt * speed * 0.02;
+    const t = S.t;
+    const a = 1.9 + 0.9 * Math.sin(t * 1.0), b = -2.0 + 0.8 * Math.sin(t * 0.73 + 1.3);
+    const c = 2.0 + 0.8 * Math.sin(t * 0.61 + 2.9), d = -1.9 + 0.9 * Math.sin(t * 0.47 + 4.1);
+
+    const decay = Math.pow(0.94, dt * 60);
+    let max = 0;
+    for (let i = 0; i < dens.length; i++) {
+        tint[i] *= decay;
+        if ((dens[i] *= decay) > max) max = dens[i];
+    }
+
+    const sy = Math.min(bw, bh) / 4.3, sx = sy * Math.min(1.6, bw / bh), ox = bw / 2, oy = bh / 2;
+    let x = 0, y = 0;
+    const count = points * Math.max(0.2, dt * 60); // same work per second at any refresh rate
+    for (let i = 0; i < count; i++) {
+        if (i % 2000 === 0) { x = Math.random() * 4 - 2; y = Math.random() * 4 - 2; }
+        const say = Math.sin(a * y);
+        const nx = say - Math.cos(b * x), ny = Math.sin(c * x) - Math.cos(d * y);
+        x = nx; y = ny;
+        if (i % 2000 < 20) continue; // let a fresh orbit settle onto the attractor first
+        const p = (oy + y * sy | 0) * bw + (ox + x * sx | 0);
+        dens[p]++;
+        tint[p] += say * 0.5 + 0.5;
+    }
+
+    S.max += (max - S.max) * 0.1; // smoothed, or the exposure flickers
+    const gain = 250 / (S.max + 1), inv = 1 / Math.log1p(250);
+    const lo = duoRamp(color, 0), hi = duoRamp(color, 0.5);
+    for (let i = 0; i < dens.length; i++) {
+        const dn = dens[i];
+        if (dn < 0.02) { px[i] = 0xff000000; continue; }
+        const v = Math.min(1, Math.log1p(dn * gain) * inv), m = tint[i] / dn, w = v * v * v * 200;
+        const r = (lo[0] + (hi[0] - lo[0]) * m) * v + w, g = (lo[1] + (hi[1] - lo[1]) * m) * v + w, bl = (lo[2] + (hi[2] - lo[2]) * m) * v + w;
+        px[i] = 0xff000000 | (bl > 255 ? 255 : bl) << 16 | (g > 255 ? 255 : g) << 8 | (r > 255 ? 255 : r);
+    }
+    S.cx.putImageData(S.img, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(S.cv, 0, 0, bw * q, bh * q);
+}
+
+// --- Animation 24: Black Hole ---
+// A fragment shader bends every pixel's light ray through Schwarzschild gravity, live. Where a ray
+// crosses the accretion disk it picks up glowing gas (Doppler-brightened on the approaching side);
+// rays that escape sample a procedural star field, so the sky behind the hole is lensed too.
+let hole = null;
+const HOLE_FRAG = `
+precision highp float;
+uniform vec2 uRes;
+uniform float uTime, uTilt, uDop, uFire;
+uniform vec3 uBase;
+const float RIN = 2.6, ROUT = 12.0; // disk edges, in horizon radii
+
+float hash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float noise(vec3 x) {
+    vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(mix(hash(i), hash(i + vec3(1, 0, 0)), f.x), mix(hash(i + vec3(0, 1, 0)), hash(i + vec3(1, 1, 0)), f.x), f.y),
+               mix(mix(hash(i + vec3(0, 0, 1)), hash(i + vec3(1, 0, 1)), f.x), mix(hash(i + vec3(0, 1, 1)), hash(i + vec3(1, 1, 1)), f.x), f.y), f.z);
+}
+float fbm(vec3 p) { float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { v += a * noise(p); p = p * 2.03 + 7.1; a *= 0.5; } return v; }
+
+// Gas density at (radius, angle) after orbiting for tau: inner rings turn faster (Kepler), shearing it into streaks
+float gas(float r, float phi, float tau, float seed) {
+    float a = phi - tau * 1.1 * pow(r, -1.5);
+    return fbm(vec3(cos(a) * 2.2, sin(a) * 2.2, r * 1.5 + seed));
+}
+
+vec3 heat(float x) {
+    vec3 fire = vec3(3.0 * x, 2.1 * x * x, 1.7 * x * x * x);
+    vec3 tint = uBase * min(2.0 * x, 1.5) + (1.0 - uBase) * pow(max(0.0, 2.0 * x - 1.0), 1.5);
+    return mix(tint, fire, uFire);
+}
+
+vec3 stars(vec3 d, float S, float rad) {
+    vec3 p = d * S, id = floor(p);
+    vec3 at = id + 0.2 + 0.6 * vec3(hash(id), hash(id + 11.1), hash(id + 23.7));
+    float b = pow(hash(id + 5.5), 5.0) * 2.5 + 0.05;
+    return smoothstep(rad, 0.0, length(p - at)) * b * mix(vec3(1.0, 0.8, 0.6), vec3(0.7, 0.85, 1.0), hash(id + 3.3));
+}
+
+vec3 sky(vec3 d) {
+    float a = uTime * 0.004, ca = cos(a), sa = sin(a);
+    d.xz = vec2(d.x * ca - d.z * sa, d.x * sa + d.z * ca);
+    float px = 1.8 / min(uRes.x, uRes.y * 1.7); // about a pixel and a half, as an angle
+    vec3 c = stars(d, 70.0, 70.0 * px) + stars(d, 150.0, 150.0 * px);
+    float n = fbm(d * 2.2 + 4.0);
+    return c + vec3(0.25, 0.3, 0.5) * 0.12 * n * n * n;
+}
+
+void main() {
+    vec2 q = (gl_FragCoord.xy - 0.5 * uRes) / min(uRes.x, uRes.y * 1.7);
+    q = vec2(q.x * 0.99 - q.y * 0.14, q.x * 0.14 + q.y * 0.99); // slight camera roll
+    float si = sin(uTilt), ci = cos(uTilt);
+    vec3 pos = vec3(0.0, 30.0 * si, -30.0 * ci); // camera above the disk plane (y = 0), looking at the hole
+    vec3 v = normalize(vec3(0.0, -si, ci) * 0.9 + vec3(q.x, 0.0, 0.0) + vec3(0.0, ci, si) * q.y);
+    vec3 hv = cross(pos, v);
+    float h2 = dot(hv, hv), trans = 1.0, glow = 0.0;
+    vec3 col = vec3(0.0);
+    bool escaped = false;
+
+    const float P = 26.0; // two gas layers, each rewound every P seconds while the other covers for it
+    float ta = fract(uTime / P), tb = fract(uTime / P + 0.5);
+
+    for (int s = 0; s < 260; s++) {
+        float r2 = dot(pos, pos);
+        if (r2 < 1.0) break; // fell through the horizon
+        if (r2 > 1300.0 && dot(pos, v) > 0.0) { escaped = true; break; }
+        // Photon path in Schwarzschild space: acceleration = -1.5 h^2 pos / r^5
+        float r = sqrt(r2), dt = 0.01 + 0.045 * r;
+        v -= pos * (1.5 * h2 / (r2 * r2 * r)) * dt;
+        vec3 np = pos + v * dt;
+        if (pos.y * np.y < 0.0) { // crossed the disk plane
+            vec3 hp = mix(pos, np, pos.y / (pos.y - np.y));
+            float rr = length(hp.xz);
+            if (rr > RIN && rr < ROUT) {
+                float env = pow(RIN / rr, 1.3) * smoothstep(RIN, RIN + 0.5, rr) * (1.0 - smoothstep(ROUT - 5.0, ROUT, rr));
+                float phi = atan(hp.z, hp.x);
+                float g = mix(gas(rr, phi, ta * P, 0.0), gas(rr, phi, tb * P, 31.7), abs(2.0 * ta - 1.0));
+                g = smoothstep(0.22, 0.72, g) * (0.6 + 0.4 * noise(vec3(rr * 6.0, 1.5, 9.0)));
+                // Relativistic beaming from the orbital speed of the gas, plus gravitational dimming
+                float beta = sqrt(0.5 / rr), cosv = dot(vec3(-hp.z, 0.0, hp.x) / rr, -normalize(v));
+                float dop = sqrt(1.0 - beta * beta) / (1.0 - beta * cosv);
+                float boost = mix(1.0, dop * dop * dop * sqrt(1.0 - 1.0 / rr), uDop);
+                float a = clamp(env * (0.3 + g) * 2.2, 0.0, 1.0);
+                col += trans * a * heat(env * (0.22 + g) * boost * 1.9);
+                trans *= 1.0 - a;
+                if (trans < 0.02) break;
+            }
+        }
+        if (r > RIN && r < ROUT) glow += dt * exp(-abs(pos.y) * 1.6) * pow(RIN / r, 2.5) * (1.0 - smoothstep(ROUT - 5.0, ROUT, r));
+        pos = np;
+    }
+    if (escaped) col += trans * sky(normalize(v));
+    col += heat(0.45) * glow * 0.06; // thin haze hugging the disk
+    gl_FragColor = vec4(1.0 - exp(-col * 1.4), 1.0);
+}`;
+
+function initHole() {
+    const cv = document.createElement('canvas'), gl = cv.getContext('webgl');
+    hole = { cv, gl, t: Math.random() * 1000, u: {} };
+    if (!gl) return;
+    const pr = gl.createProgram();
+    [[gl.VERTEX_SHADER, 'attribute vec2 p; void main() { gl_Position = vec4(p, 0.0, 1.0); }'], [gl.FRAGMENT_SHADER, HOLE_FRAG]].forEach(([type, src]) => {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s));
+        gl.attachShader(pr, s);
+    });
+    gl.bindAttribLocation(pr, 0, 'p');
+    gl.linkProgram(pr);
+    gl.useProgram(pr);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW); // one triangle covering the screen
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    for (const n of ['uRes', 'uTime', 'uTilt', 'uDop', 'uFire', 'uBase']) hole.u[n] = gl.getUniformLocation(pr, n);
+}
+
+function drawHole(color) {
+    if (!hole) initHole(); // ponytail: no WebGL context-loss recovery; reload the page if the GPU resets
+    const { cv, gl, u } = hole;
+    if (!gl) {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = '#888';
+        ctx.font = '20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Black Hole needs WebGL, which this browser has turned off.', width / 2, height / 2);
+        ctx.textAlign = 'start';
+        return;
+    }
+    const scale = parseFloat(document.getElementById('holeDetail').value) / 100;
+    const w = Math.round(width * scale), h = Math.round(height * scale);
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; gl.viewport(0, 0, w, h); }
+    hole.t += frameDt(hole) * parseFloat(document.getElementById('holeSpeed').value);
+
+    const c = hexToRgb(color), tilt = parseFloat(document.getElementById('holeTilt').value);
+    gl.uniform2f(u.uRes, w, h);
+    gl.uniform1f(u.uTime, hole.t);
+    gl.uniform1f(u.uTilt, (tilt + 2.5 * Math.sin(hole.t * 0.06)) * Math.PI / 180); // the camera bobs slowly
+    gl.uniform1f(u.uDop, parseFloat(document.getElementById('holeDoppler').value));
+    gl.uniform1f(u.uFire, document.getElementById('holeColors').value === 'fire' ? 1 : 0);
+    gl.uniform3f(u.uBase, c.r / 255, c.g / 255, c.b / 255);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(cv, 0, 0, width, height);
+}
+
 // --- Main Animation Loop ---
 function loop() {
     const type = typeSelect.value;
@@ -2454,6 +2764,12 @@ function loop() {
         drawLightning(color);
     } else if (type === 'pipes') {
         drawPipes(color);
+    } else if (type === 'attractor') {
+        drawAttractor(color);
+    } else if (type === 'silk') {
+        drawSilk(color);
+    } else if (type === 'blackhole') {
+        drawHole(color);
     } else if (type === 'mesh') {
         drawMesh(color);
     } else if (type === 'burnin') {

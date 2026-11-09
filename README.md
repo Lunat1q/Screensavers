@@ -30,6 +30,7 @@ All settings are stored in the page URL, so you can bookmark a setup or send it 
 | | **Cosmic Warp** | Flying through a star field. |
 | | **Fireworks** | Rockets bursting into sparks with gravity. |
 | | **Galaxy** | A tilted spiral galaxy: stars orbit through density-wave arms with gas glow, dust lanes and young blue stars. |
+| | **Attractor** | Thousands of particles tracing chaotic 3D attractors (Lorenz, Thomas, Aizawa, Halvorsen) with glowing trails. |
 | Waves & Patterns | **Harmonograph** | A looping, rotating curve with trails. |
 | | **Neon Waves** | Layered glowing sine waves. |
 | | **Plasma** | Classic color plasma. |
@@ -38,11 +39,13 @@ All settings are stored in the page URL, so you can bookmark a setup or send it 
 | Fractals | **Julia Set** | A Julia set whose shape morphs over time. |
 | | **Mandelbrot** | Zooms in and out of the Mandelbrot set. |
 | | **Phoenix** | The Phoenix fractal with a slowly drifting view. |
+| | **Silk** | A de Jong attractor rendered as glowing density, slowly morphing like smoke or fabric. |
 | Scenes | **Synthwave** | Outrun sunset: striped sun, neon floor and wireframe canyon flying past. |
 | | **Cyber Tunnel** | Flying through a twisting tunnel of polygons. |
 | | **Ripples** | Raindrops on a night lake: a real wave simulation that bends the moon's reflection. |
 | | **Lightning** | Forked bolts that re-strike and light up the storm clouds from inside, with rain and hills. |
 | | **3D Pipes** | Shiny pipes growing and turning through a 3D grid, like the old Windows screensaver. |
+| | **Black Hole** | A ray-traced black hole: gravity bends the accretion disk over the shadow and smears the stars behind it. |
 | Fun | **Win Update** | A fake "Working on updates" screen (see below). |
 | Utility | **Burn-in Fix** | Pixel refresh patterns for image retention (see below). |
 
