@@ -67,6 +67,7 @@ function resetCanvas() {
 function updateSettingsVisibility() {
     document.querySelectorAll('.setting-group').forEach(el => el.classList.remove('active'));
     const type = typeSelect.value;
+    document.getElementById('modeTitle').textContent = typeSelect.selectedOptions[0].text;
     document.getElementById('colorGroup').hidden = type === 'burnin'; // burn-in uses fixed colors
     const activeGroup = document.getElementById(`settings-${type}`);
     if (activeGroup) {

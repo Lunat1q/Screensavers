@@ -24,18 +24,32 @@
             background: rgba(10, 10, 18, 0.82);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
-            padding: 32px;
+            padding: 24px 28px;
             border-radius: 16px;
-            text-align: center;
             box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
             transition: opacity 0.5s ease, transform 0.5s ease;
             z-index: 10;
-            width: 540px;
-            max-width: 95vw;
-            max-height: 85vh;
-            overflow-y: auto;
+            width: min(1000px, 96vw);
+            max-height: 96vh;
+            overflow-y: auto; /* ponytail: only kicks in on phones / tiny windows */
             border: 1px solid rgba(255, 255, 255, 0.07);
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            column-gap: 28px;
         }
+        [hidden] { display: none !important; }
+
+        #settingsPane {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            border-left: 1px solid rgba(255, 255, 255, 0.06);
+            padding-left: 28px;
+        }
+        #modeTitle { font-size: 17px; font-weight: 500; color: #fff; }
+        #startBtn { margin-top: auto; }
+        #colorGroup { margin-bottom: 0; }
+
 
         #ui.hidden {
             opacity: 0;
@@ -49,7 +63,9 @@
         #ui::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
 
         h2 {
-            margin: 0 0 24px 0;
+            grid-column: 1 / -1;
+            text-align: center;
+            margin: 0 0 16px 0;
             font-weight: 300;
             font-size: 20px;
             letter-spacing: 3px;
@@ -60,10 +76,6 @@
             background-clip: text;
         }
 
-        .form-group {
-            margin-bottom: 18px;
-            text-align: left;
-        }
 
         label {
             display: block;
@@ -102,10 +114,10 @@
         select option { background: #141422; color: #eee; padding: 6px; }
 
         input[type="color"] {
-            width: 100%;
-            padding: 4px;
-            height: 42px;
-            border-radius: 10px;
+            flex: 1;
+            padding: 3px;
+            height: 32px;
+            border-radius: 8px;
             border: 1px solid rgba(255, 255, 255, 0.1);
             background: rgba(255, 255, 255, 0.05);
             cursor: pointer;
@@ -113,16 +125,11 @@
         }
         input[type="color"]:hover { border-color: rgba(255, 255, 255, 0.2); }
 
-        .setting-group {
-            margin-top: 14px;
-            border-top: 1px solid rgba(255, 255, 255, 0.06);
-            padding-top: 14px;
-            display: none;
-        }
+        .setting-group { display: none; }
         .setting-group.active { display: block; }
 
         .setting-row {
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -220,25 +227,22 @@
 
         .card-grid {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: repeat(6, 1fr);
             gap: 6px;
             text-align: center;
         }
-        @media (max-width: 480px) {
-            .card-grid { grid-template-columns: repeat(3, 1fr); }
-        }
         .card-category {
             grid-column: 1 / -1;
-            font-size: 9px;
+            font-size: 10px;
             text-transform: uppercase;
             letter-spacing: 1.5px;
-            color: rgba(255,255,255,0.2);
-            padding: 10px 0 4px;
+            color: rgba(255,255,255,0.3);
+            padding: 8px 0 2px;
             text-align: left;
         }
-        .card-category:first-child { padding-top: 2px; }
+        .card-category:first-child { padding-top: 0; }
         .card {
-            padding: 10px 4px 8px;
+            padding: 8px 4px 7px;
             border-radius: 8px;
             border: 1px solid rgba(255,255,255,0.05);
             background: rgba(255,255,255,0.02);
@@ -259,18 +263,22 @@
             border-color: rgba(0,119,255,0.45);
             box-shadow: 0 0 14px rgba(0,119,255,0.12);
         }
-        .card-icon { font-size: 22px; line-height: 1; }
+        .card-icon { font-size: 20px; line-height: 1; }
         .card-name {
-            font-size: 9.5px;
-            color: rgba(255,255,255,0.45);
+            font-size: 10.5px;
+            color: rgba(255,255,255,0.55);
             line-height: 1.2;
             letter-spacing: 0.3px;
         }
         .card.active .card-name { color: rgba(255,255,255,0.9); }
 
-        .setting-row select { flex: 1; width: auto; padding: 7px 34px 7px 12px; font-size: 13px; border-radius: 8px; }
-        #settings-burnin .setting-row label { min-width: 150px; }
-        .setting-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: #0077ff; cursor: pointer; }
+        .setting-row select { flex: 1; width: auto; min-width: 0; padding: 7px 34px 7px 12px; font-size: 13px; border-radius: 8px; }
+        .setting-row input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: #0077ff; cursor: pointer; }
+        .checks { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+        .setting-row .checks label {
+            min-width: 0; display: flex; align-items: center; gap: 6px; cursor: pointer;
+            font-size: 12px; font-weight: 400; letter-spacing: 0; text-transform: none; color: rgba(255,255,255,0.75);
+        }
         .warn {
             font-size: 12px; line-height: 1.5; text-align: left;
             color: #ffb4b4; background: rgba(255, 60, 60, 0.1);
@@ -327,6 +335,24 @@
         #meshTip { top: auto; bottom: 12px; animation: meshTip 4s forwards; }
         @keyframes meshTip { 0%, 75% { opacity: 1; } 100% { opacity: 0; } }
 
+        /* Phones: one column, no category headers, compact tiles, Start always reachable */
+        @media (max-width: 760px) {
+            #ui { grid-template-columns: 1fr; row-gap: 10px; padding: 14px 12px 0; }
+            h2 { font-size: 16px; margin: 0; }
+            #settingsPane { display: contents; } /* lets Start stick to the whole panel, not just this pane */
+            #modeTitle { border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 12px; margin-top: 2px; }
+            .card-grid { grid-template-columns: repeat(5, 1fr); gap: 4px; }
+            .card-category { display: none; }
+            .card { padding: 6px 2px 5px; gap: 3px; }
+            .card-icon { font-size: 18px; }
+            .card-name { font-size: 9.5px; }
+            .setting-row label { min-width: 90px; }
+            #startBtn {
+                position: sticky; bottom: 0; margin: 4px 0 0; transform: none;
+                box-shadow: 0 -10px 16px 4px rgba(10, 10, 18, 0.9);
+            }
+        }
+
         canvas { display: block; }
     </style>
 </head>
@@ -335,8 +361,8 @@
 <div id="ui">
     <h2>Screensaver Studio</h2>
 
-    <div class="form-group">
-        <label>Animation</label>
+    <div id="modePane">
+        <label>Pick a screensaver</label>
         <select id="typeSelect" style="display:none">
             <option value="solid">Solid Color</option>
             <option value="bouncing">Bouncing Text</option>
@@ -395,14 +421,16 @@
             <div class="card" data-value="lightning"><span class="card-icon">⚡</span><span class="card-name">Lightning</span></div>
             <div class="card" data-value="pipes"><span class="card-icon">🔧</span><span class="card-name">3D Pipes</span></div>
             <div class="card" data-value="blackhole"><span class="card-icon">🕳️</span><span class="card-name">Black Hole</span></div>
-            <div class="card-category">Fun</div>
-            <div class="card" data-value="win11"><span class="card-icon">💻</span><span class="card-name">Win Update</span></div>
-            <div class="card-category">Utility</div>
+            <div class="card-category">Extras</div>
+            <div class="card" data-value="win11" title="Fake Windows update screen"><span class="card-icon">💻</span><span class="card-name">Win Update</span></div>
             <div class="card" data-value="burnin" title="Pixel Refresh: clears image retention / ghosting on LCDs"><span class="card-icon">🩹</span><span class="card-name">Burn-in Fix</span></div>
         </div>
     </div>
 
-    <div class="form-group" id="colorGroup">
+    <div id="settingsPane">
+    <div id="modeTitle"></div>
+
+    <div class="setting-row" id="colorGroup">
         <label for="colorPicker">Base Color</label>
         <input type="color" id="colorPicker" value="#00d2ff">
     </div>
@@ -903,18 +931,14 @@
             <span class="val" data-for="meshTrail"></span>
         </div>
         <div class="setting-row">
-            <label for="meshLines">Lines</label>
-            <input type="checkbox" id="meshLines" checked>
+            <label>Draw</label>
+            <span class="checks">
+                <label><input type="checkbox" id="meshLines" checked>Lines</label>
+                <label><input type="checkbox" id="meshFill">Triangles</label>
+                <label><input type="checkbox" id="meshDots">Points</label>
+            </span>
         </div>
-        <div class="setting-row">
-            <label for="meshFill">Triangles</label>
-            <input type="checkbox" id="meshFill">
-        </div>
-        <div class="setting-row">
-            <label for="meshDots">Points</label>
-            <input type="checkbox" id="meshDots">
-        </div>
-        <p class="hint">Base Color caps each RGB channel. White gives the full-color look of the original Meshy. Right-click the background or press H for hotkeys. On touch screens, tap the mesh for on-screen controls.</p>
+        <p class="hint">Tip: pick white for the full-color look. While running, press H or right-click (tap on touch screens) for live controls.</p>
     </div>
 
     <!-- Burn-in Fix / Pixel Refresh -->
@@ -930,15 +954,15 @@
             </select>
         </div>
         <div class="setting-row">
-            <label for="burnSpeed">Cycle Speed</label>
+            <label for="burnSpeed">Speed</label>
             <select id="burnSpeed">
                 <option value="slow">Slow</option>
                 <option value="medium">Medium</option>
-                <option value="fast" disabled>Fast (needs fast flashing)</option>
+                <option value="fast" disabled>Fast (allow flashing first)</option>
             </select>
         </div>
         <div class="setting-row">
-            <label for="burnDuration">Run For</label>
+            <label for="burnDuration">Run for</label>
             <select id="burnDuration">
                 <option value="30">30 min</option>
                 <option value="60">1 h</option>
@@ -949,32 +973,32 @@
             </select>
         </div>
         <div class="setting-row">
-            <label for="burnEnd">When Done</label>
+            <label for="burnEnd">When done</label>
             <select id="burnEnd">
-                <option value="return">Return to screensaver</option>
-                <option value="off">Black screen, let display sleep</option>
+                <option value="return">Back to screensaver</option>
+                <option value="off">Go black (display sleeps)</option>
             </select>
         </div>
         <div class="setting-row">
-            <label for="burnExit">Exit On</label>
+            <label for="burnExit">Stop on</label>
             <select id="burnExit">
-                <option value="any">Any input</option>
-                <option value="esc">Esc key only</option>
+                <option value="any">Any key or mouse</option>
+                <option value="esc">Esc only</option>
             </select>
         </div>
         <div class="setting-row">
-            <label for="burnShowTime">Show Time Left</label>
-            <input type="checkbox" id="burnShowTime">
+            <label>Options</label>
+            <span class="checks">
+                <label><input type="checkbox" id="burnShowTime">Show timer</label>
+                <label><input type="checkbox" id="burnFastFlash" data-volatile>Allow flashing</label>
+            </span>
         </div>
-        <div class="setting-row">
-            <label for="burnFastFlash">Allow Fast Flashing</label>
-            <input type="checkbox" id="burnFastFlash" data-volatile>
-        </div>
-        <p id="burnFlashWarning" class="warn" hidden>&#9888; Photosensitivity warning: Fast speed flashes the whole screen more than 3 times per second. This can trigger seizures in people with photosensitive epilepsy. Do not use it if you or anyone who may see the screen is sensitive to flashing light.</p>
-        <p class="hint">Covers the monitor this window is on. For several monitors, open this page in a window on each one. Browsers can't power off the display, so "let display sleep" shows black and lets your OS power settings take over.</p>
+        <p id="burnFlashWarning" class="warn" hidden>&#9888; Fast speed flashes the whole screen more than 3 times a second. This can trigger seizures in people with photosensitive epilepsy. Don't use it if anyone who may see the screen is sensitive to flashing light.</p>
+        <p class="hint">Covers this monitor only. Got more? Open a window on each. Browsers can't switch the display off, so "Go black" lets your OS power settings take over.</p>
     </div>
 
-    <button id="startBtn">&#9654; Launch Screensaver</button>
+    <button id="startBtn">&#9654; Start Screensaver</button>
+    </div>
 </div>
 
 <dialog id="burnWarnDialog">

@@ -12,7 +12,7 @@ No install, no build, no tracking. It's a static page (`index.html` + `script.js
 
 1. Open the page and pick an animation from the grid.
 2. Tune it: the **Base Color** and the sliders under it update the background live.
-3. Press **Launch Screensaver** to go full screen. Click or press a key to bring the panel back for a moment, and press `Esc` to leave full screen.
+3. Press **Start Screensaver** to go full screen. Click or press a key to bring the panel back for a moment, and press `Esc` to leave full screen.
 
 Pressing `F11` on its own works too: the panel hides itself when the window goes full screen.
 
