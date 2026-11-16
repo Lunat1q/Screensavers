@@ -40,12 +40,16 @@ All settings are stored in the page URL, so you can bookmark a setup or send it 
 | | **Mandelbrot** | Zooms in and out of the Mandelbrot set. |
 | | **Phoenix** | The Phoenix fractal with a slowly drifting view. |
 | | **Silk** | A de Jong attractor rendered as glowing density, slowly morphing like smoke or fabric. |
+| | **Mandelbulb** | The 3D Mandelbrot: a ray-marched fractal that slowly orbits while its power shifts and new buds grow. |
 | Scenes | **Synthwave** | Outrun sunset: striped sun, neon floor and wireframe canyon flying past. |
 | | **Cyber Tunnel** | Flying through a twisting tunnel of polygons. |
 | | **Ripples** | Raindrops on a night lake: a real wave simulation that bends the moon's reflection. |
 | | **Lightning** | Forked bolts that re-strike and light up the storm clouds from inside, with rain and hills. |
 | | **3D Pipes** | Shiny pipes growing and turning through a 3D grid, like the old Windows screensaver. |
 | | **Black Hole** | A ray-traced black hole: gravity bends the accretion disk over the shadow and smears the stars behind it. |
+| | **Nebula** | A slow flight through glowing volumetric gas clouds and dark dust lanes, with stars behind. |
+| | **Ocean** | Open sea at sunset or under a full moon: rolling swells that reflect the sky and carry a glitter path. |
+| | **Star** | A sun up close: boiling surface, drifting sunspots and a streaming corona. |
 | Fun | **Win Update** | A fake "Working on updates" screen (see below). |
 | Utility | **Burn-in Fix** | Pixel refresh patterns for image retention (see below). |
 

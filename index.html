@@ -386,6 +386,10 @@
             <option value="lightning">Lightning Storm</option>
             <option value="pipes">3D Pipes</option>
             <option value="blackhole">Black Hole</option>
+            <option value="nebula">Nebula</option>
+            <option value="ocean">Ocean</option>
+            <option value="star">Star</option>
+            <option value="mandelbulb">Mandelbulb</option>
             <option value="attractor">Strange Attractor</option>
             <option value="silk">Silk</option>
             <option value="win11">Windows 11 Update</option>
@@ -414,6 +418,7 @@
             <div class="card" data-value="mandelbrot"><span class="card-icon">🪰</span><span class="card-name">Mandelbrot</span></div>
             <div class="card" data-value="phoenix"><span class="card-icon">🦅</span><span class="card-name">Phoenix</span></div>
             <div class="card" data-value="silk"><span class="card-icon">🪶</span><span class="card-name">Silk</span></div>
+            <div class="card" data-value="mandelbulb"><span class="card-icon">🥦</span><span class="card-name">Mandelbulb</span></div>
             <div class="card-category">Scenes</div>
             <div class="card" data-value="synthwave"><span class="card-icon">🌅</span><span class="card-name">Synthwave</span></div>
             <div class="card" data-value="tunnel"><span class="card-icon">◎</span><span class="card-name">Cyber Tunnel</span></div>
@@ -421,6 +426,9 @@
             <div class="card" data-value="lightning"><span class="card-icon">⚡</span><span class="card-name">Lightning</span></div>
             <div class="card" data-value="pipes"><span class="card-icon">🔧</span><span class="card-name">3D Pipes</span></div>
             <div class="card" data-value="blackhole"><span class="card-icon">🕳️</span><span class="card-name">Black Hole</span></div>
+            <div class="card" data-value="nebula"><span class="card-icon">🌠</span><span class="card-name">Nebula</span></div>
+            <div class="card" data-value="ocean"><span class="card-icon">⛵</span><span class="card-name">Ocean</span></div>
+            <div class="card" data-value="star"><span class="card-icon">☀️</span><span class="card-name">Star</span></div>
             <div class="card-category">Extras</div>
             <div class="card" data-value="win11" title="Fake Windows update screen"><span class="card-icon">💻</span><span class="card-name">Win Update</span></div>
             <div class="card" data-value="burnin" title="Pixel Refresh: clears image retention / ghosting on LCDs"><span class="card-icon">🩹</span><span class="card-name">Burn-in Fix</span></div>
@@ -859,6 +867,99 @@
                 <option value="fire">Fire</option>
                 <option value="base">Base Color</option>
             </select>
+        </div>
+    </div>
+
+    <!-- Nebula -->
+    <div id="settings-nebula" class="setting-group">
+        <div class="setting-row">
+            <label>Speed</label>
+            <input type="range" id="nebulaSpeed" min="0" max="4" step="0.25" value="1">
+            <span class="val" data-for="nebulaSpeed"></span>
+        </div>
+        <div class="setting-row">
+            <label>Gas</label>
+            <input type="range" id="nebulaGas" min="1" max="10" step="1" value="5">
+            <span class="val" data-for="nebulaGas"></span>
+        </div>
+        <div class="setting-row">
+            <label>Resolution %</label>
+            <input type="range" id="nebulaDetail" min="30" max="100" step="10" value="60">
+            <span class="val" data-for="nebulaDetail"></span>
+        </div>
+        <div class="setting-row">
+            <label for="nebulaColors">Colors</label>
+            <select id="nebulaColors">
+                <option value="fire">Hydrogen & Oxygen</option>
+                <option value="base">Base Color</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Ocean -->
+    <div id="settings-ocean" class="setting-group">
+        <div class="setting-row">
+            <label>Speed</label>
+            <input type="range" id="oceanSpeed" min="0" max="3" step="0.1" value="1">
+            <span class="val" data-for="oceanSpeed"></span>
+        </div>
+        <div class="setting-row">
+            <label>Wave Height</label>
+            <input type="range" id="oceanChop" min="0.3" max="2" step="0.1" value="1">
+            <span class="val" data-for="oceanChop"></span>
+        </div>
+        <div class="setting-row">
+            <label>Resolution %</label>
+            <input type="range" id="oceanDetail" min="30" max="100" step="10" value="70">
+            <span class="val" data-for="oceanDetail"></span>
+        </div>
+        <div class="setting-row">
+            <label for="oceanColors">Colors</label>
+            <select id="oceanColors">
+                <option value="fire">Sunset</option>
+                <option value="night">Night Time</option>
+                <option value="base">Base Color</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Star -->
+    <div id="settings-star" class="setting-group">
+        <div class="setting-row">
+            <label>Speed</label>
+            <input type="range" id="starSpeed" min="0" max="4" step="0.25" value="1">
+            <span class="val" data-for="starSpeed"></span>
+        </div>
+        <div class="setting-row">
+            <label>Resolution %</label>
+            <input type="range" id="starDetail" min="30" max="100" step="10" value="100">
+            <span class="val" data-for="starDetail"></span>
+        </div>
+        <div class="setting-row">
+            <label for="starColors">Colors</label>
+            <select id="starColors">
+                <option value="fire">Fire</option>
+                <option value="base">Base Color</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Mandelbulb -->
+    <div id="settings-mandelbulb" class="setting-group">
+        <div class="setting-row">
+            <label>Speed</label>
+            <input type="range" id="bulbSpeed" min="0" max="4" step="0.25" value="1">
+            <span class="val" data-for="bulbSpeed"></span>
+        </div>
+        <div class="setting-row">
+            <label>Power</label>
+            <input type="range" id="bulbPower" min="3" max="12" step="0.5" value="8">
+            <span class="val" data-for="bulbPower"></span>
+        </div>
+        <div class="setting-row">
+            <label>Resolution %</label>
+            <input type="range" id="bulbDetail" min="30" max="100" step="10" value="70">
+            <span class="val" data-for="bulbDetail"></span>
         </div>
     </div>
 

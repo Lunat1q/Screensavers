@@ -2569,17 +2569,13 @@ function drawSilk(color) {
     ctx.drawImage(S.cv, 0, 0, bw * q, bh * q);
 }
 
-// --- Animation 24: Black Hole ---
-// A fragment shader bends every pixel's light ray through Schwarzschild gravity, live. Where a ray
-// crosses the accretion disk it picks up glowing gas (Doppler-brightened on the approaching side);
-// rays that escape sample a procedural star field, so the sky behind the hole is lensed too.
-let hole = null;
-const HOLE_FRAG = `
+// --- Shared: full-screen fragment shaders ---
+// One hidden WebGL canvas and one program per mode; each frame is drawn there and copied to the 2D canvas.
+const GLSL_LIB = `
 precision highp float;
 uniform vec2 uRes;
-uniform float uTime, uTilt, uDop, uFire;
+uniform float uTime, uFire;
 uniform vec3 uBase;
-const float RIN = 2.6, ROUT = 12.0; // disk edges, in horizon radii
 
 float hash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
 float noise(vec3 x) {
@@ -2589,12 +2585,7 @@ float noise(vec3 x) {
 }
 float fbm(vec3 p) { float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { v += a * noise(p); p = p * 2.03 + 7.1; a *= 0.5; } return v; }
 
-// Gas density at (radius, angle) after orbiting for tau: inner rings turn faster (Kepler), shearing it into streaks
-float gas(float r, float phi, float tau, float seed) {
-    float a = phi - tau * 1.1 * pow(r, -1.5);
-    return fbm(vec3(cos(a) * 2.2, sin(a) * 2.2, r * 1.5 + seed));
-}
-
+// Glow ramp: black-body fire, or the base color running up to white
 vec3 heat(float x) {
     vec3 fire = vec3(3.0 * x, 2.1 * x * x, 1.7 * x * x * x);
     vec3 tint = uBase * min(2.0 * x, 1.5) + (1.0 - uBase) * pow(max(0.0, 2.0 * x - 1.0), 1.5);
@@ -2607,12 +2598,87 @@ vec3 stars(vec3 d, float S, float rad) {
     float b = pow(hash(id + 5.5), 5.0) * 2.5 + 0.05;
     return smoothstep(rad, 0.0, length(p - at)) * b * mix(vec3(1.0, 0.8, 0.6), vec3(0.7, 0.85, 1.0), hash(id + 3.3));
 }
+// px: about a pixel and a half, as an angle
+vec3 starfield(vec3 d, float px) { return stars(d, 70.0, 70.0 * px) + stars(d, 150.0, 150.0 * px); }
+`;
+const num = id => parseFloat(document.getElementById(id).value);
+let glx = null;
+
+// Runs `frag` for mode `key`, which owns the sliders <key>Speed and <key>Detail (resolution %).
+// uniforms(t) returns the mode's own uniforms as numbers or arrays; uRes, uTime and uBase are always set.
+function drawShader(key, frag, color, uniforms) {
+    if (!glx) { // ponytail: no WebGL context-loss recovery; reload the page if the GPU resets
+        const cv = document.createElement('canvas'), gl = cv.getContext('webgl');
+        glx = { cv, gl, progs: {} };
+        if (gl) {
+            gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW); // one triangle covering the screen
+            gl.enableVertexAttribArray(0);
+            gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+        }
+    }
+    const { cv, gl } = glx;
+    if (!gl) {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = '#888';
+        ctx.font = '20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('This screensaver needs WebGL, which this browser has turned off.', width / 2, height / 2);
+        ctx.textAlign = 'start';
+        return;
+    }
+    let P = glx.progs[key];
+    if (!P) {
+        const pr = gl.createProgram();
+        [[gl.VERTEX_SHADER, 'attribute vec2 p; void main() { gl_Position = vec4(p, 0.0, 1.0); }'], [gl.FRAGMENT_SHADER, GLSL_LIB + frag]].forEach(([type, src]) => {
+            const s = gl.createShader(type);
+            gl.shaderSource(s, src);
+            gl.compileShader(s);
+            if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(key, gl.getShaderInfoLog(s));
+            gl.attachShader(pr, s);
+        });
+        gl.bindAttribLocation(pr, 0, 'p');
+        gl.linkProgram(pr);
+        P = glx.progs[key] = { pr, u: {}, t: Math.random() * 1000 };
+    }
+    gl.useProgram(P.pr);
+    const scale = num(key + 'Detail') / 100;
+    const w = Math.round(width * scale), h = Math.round(height * scale);
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    gl.viewport(0, 0, w, h);
+    P.t += frameDt(P) * num(key + 'Speed');
+
+    const c = hexToRgb(color);
+    const all = { uRes: [w, h], uTime: P.t, uBase: [c.r / 255, c.g / 255, c.b / 255], ...uniforms(P.t) };
+    for (const n in all) {
+        const v = [all[n]].flat();
+        gl['uniform' + v.length + 'f'](P.u[n] ??= gl.getUniformLocation(P.pr, n), ...v);
+    }
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(cv, 0, 0, width, height);
+}
+const fireOn = id => document.getElementById(id).value === 'base' ? 0 : 1; // "Colors" selects: natural palette or Base Color
+
+// --- Animation 24: Black Hole ---
+// A fragment shader bends every pixel's light ray through Schwarzschild gravity, live. Where a ray
+// crosses the accretion disk it picks up glowing gas (Doppler-brightened on the approaching side);
+// rays that escape sample a procedural star field, so the sky behind the hole is lensed too.
+const HOLE_FRAG = `
+uniform float uTilt, uDop;
+const float RIN = 2.6, ROUT = 12.0; // disk edges, in horizon radii
+
+// Gas density at (radius, angle) after orbiting for tau: inner rings turn faster (Kepler), shearing it into streaks
+float gas(float r, float phi, float tau, float seed) {
+    float a = phi - tau * 1.1 * pow(r, -1.5);
+    return fbm(vec3(cos(a) * 2.2, sin(a) * 2.2, r * 1.5 + seed));
+}
 
 vec3 sky(vec3 d) {
     float a = uTime * 0.004, ca = cos(a), sa = sin(a);
     d.xz = vec2(d.x * ca - d.z * sa, d.x * sa + d.z * ca);
-    float px = 1.8 / min(uRes.x, uRes.y * 1.7); // about a pixel and a half, as an angle
-    vec3 c = stars(d, 70.0, 70.0 * px) + stars(d, 150.0, 150.0 * px);
+    vec3 c = starfield(d, 1.8 / min(uRes.x, uRes.y * 1.7));
     float n = fbm(d * 2.2 + 4.0);
     return c + vec3(0.25, 0.3, 0.5) * 0.12 * n * n * n;
 }
@@ -2665,56 +2731,213 @@ void main() {
     gl_FragColor = vec4(1.0 - exp(-col * 1.4), 1.0);
 }`;
 
-function initHole() {
-    const cv = document.createElement('canvas'), gl = cv.getContext('webgl');
-    hole = { cv, gl, t: Math.random() * 1000, u: {} };
-    if (!gl) return;
-    const pr = gl.createProgram();
-    [[gl.VERTEX_SHADER, 'attribute vec2 p; void main() { gl_Position = vec4(p, 0.0, 1.0); }'], [gl.FRAGMENT_SHADER, HOLE_FRAG]].forEach(([type, src]) => {
-        const s = gl.createShader(type);
-        gl.shaderSource(s, src);
-        gl.compileShader(s);
-        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s));
-        gl.attachShader(pr, s);
-    });
-    gl.bindAttribLocation(pr, 0, 'p');
-    gl.linkProgram(pr);
-    gl.useProgram(pr);
-    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW); // one triangle covering the screen
-    gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-    for (const n of ['uRes', 'uTime', 'uTilt', 'uDop', 'uFire', 'uBase']) hole.u[n] = gl.getUniformLocation(pr, n);
+function drawHole(color) {
+    drawShader('hole', HOLE_FRAG, color, t => ({
+        uTilt: (num('holeTilt') + 2.5 * Math.sin(t * 0.06)) * Math.PI / 180, // the camera bobs slowly
+        uDop: num('holeDoppler'),
+        uFire: fireOn('holeColors')
+    }));
 }
 
-function drawHole(color) {
-    if (!hole) initHole(); // ponytail: no WebGL context-loss recovery; reload the page if the GPU resets
-    const { cv, gl, u } = hole;
-    if (!gl) {
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, width, height);
-        ctx.fillStyle = '#888';
-        ctx.font = '20px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('Black Hole needs WebGL, which this browser has turned off.', width / 2, height / 2);
-        ctx.textAlign = 'start';
-        return;
-    }
-    const scale = parseFloat(document.getElementById('holeDetail').value) / 100;
-    const w = Math.round(width * scale), h = Math.round(height * scale);
-    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; gl.viewport(0, 0, w, h); }
-    hole.t += frameDt(hole) * parseFloat(document.getElementById('holeSpeed').value);
+// --- Animation 25: Nebula ---
+// A slow flight through glowing interstellar gas: each pixel's ray is marched through warped 3D noise,
+// picking up emission front to back, with dark dust lanes soaking up the light behind them.
+const NEBULA_FRAG = `
+uniform float uDense;
+void main() {
+    vec2 q = (gl_FragCoord.xy - 0.5 * uRes) / uRes.y;
+    float t = uTime, yaw = 0.5 * sin(t * 0.013), roll = t * 0.008;
+    vec3 ro = vec3(1.5 * sin(t * 0.021), cos(t * 0.017), t * 0.25);
+    vec3 rd = normalize(vec3(q, 1.0));
+    rd.xy = rd.xy * cos(roll) + vec2(-rd.y, rd.x) * sin(roll);
+    rd.xz = rd.xz * cos(yaw) + vec2(-rd.z, rd.x) * sin(yaw);
 
-    const c = hexToRgb(color), tilt = parseFloat(document.getElementById('holeTilt').value);
-    gl.uniform2f(u.uRes, w, h);
-    gl.uniform1f(u.uTime, hole.t);
-    gl.uniform1f(u.uTilt, (tilt + 2.5 * Math.sin(hole.t * 0.06)) * Math.PI / 180); // the camera bobs slowly
-    gl.uniform1f(u.uDop, parseFloat(document.getElementById('holeDoppler').value));
-    gl.uniform1f(u.uFire, document.getElementById('holeColors').value === 'fire' ? 1 : 0);
-    gl.uniform3f(u.uBase, c.r / 255, c.g / 255, c.b / 255);
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(cv, 0, 0, width, height);
+    vec3 ca = mix(uBase.brg, vec3(0.12, 0.42, 0.95), uFire), cb = mix(uBase, vec3(0.95, 0.2, 0.36), uFire);
+    vec3 col = vec3(0.0);
+    float trans = 1.0, d = 0.08 * fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))); // jittered start hides the step banding
+    for (int i = 0; i < 72; i++) {
+        float st = 0.08 + 0.045 * d;
+        vec3 p = ro + rd * d;
+        vec3 wv = vec3(noise(p * 0.21), noise(p * 0.21 + 31.0), noise(p * 0.21 + 67.0));
+        float big = 0.55 + 0.9 * wv.y; // large-scale clumping: leaves voids, where the detail noise is skipped
+        if (big * 0.8 > uDense) {
+            float n = fbm(p * 0.3 + 1.4 * wv);
+            float den = smoothstep(uDense, uDense + 0.28, n * big) * smoothstep(0.3, 3.0, d); // thins out next to the camera
+            vec3 c = mix(ca, cb, smoothstep(0.2, 0.8, 0.5 * den + 1.4 * (wv.z - 0.3))) * (0.15 + 0.9 * den) + vec3(1.0, 0.9, 0.8) * den * den * den * den * 0.6;
+            float a = 1.0 - exp(-den * 0.7 * st);
+            col += trans * a * c * exp(-d * 0.05) * 2.0;
+            trans *= 1.0 - a;
+            trans *= exp(-smoothstep(0.55, 0.8, wv.x) * smoothstep(0.35, 0.6, n) * 0.9 * st); // dust
+        }
+        d += st;
+        if (trans < 0.03) break;
+    }
+    col += trans * starfield(rd, 1.5 / uRes.y);
+    gl_FragColor = vec4(1.0 - exp(-col * 1.4), 1.0);
+}`;
+
+function drawNebula(color) {
+    drawShader('nebula', NEBULA_FRAG, color, () => ({ uDense: 0.65 - 0.03 * num('nebulaGas'), uFire: fireOn('nebulaColors') }));
+}
+
+// --- Animation 26: Ocean ---
+// Open sea at sunset or under the moon. The surface is a sum of noise-bent swells (shorter waves travel slower, as on real
+// water); each ray is marched down onto it, then reflects the sky by Fresnel, which makes the sun's glitter path.
+const OCEAN_FRAG = `
+uniform float uChop, uSunY, uGlow, uStars;
+uniform vec3 uSun, uHor, uMid, uZen, uTint; // the look: sun (or moon), sky from horizon to zenith, water tint
+#define SUN normalize(vec3(0.22, uSunY, 1.0))
+
+// foot: size of a pixel on the water. Waves smaller than that are melted to their average height, or they shimmer.
+float sea(vec2 p, float oct, float foot) {
+    float h = 0.0, a = 0.55, k = 0.5;
+    for (int i = 0; i < 7; i++) {
+        if (float(i) >= oct) break;
+        float keep = 1.0 - smoothstep(0.5, 1.5, k * foot);
+        float fi = float(i), ang = 0.9 * sin(fi * 2.4);
+        float ph = dot(p, vec2(sin(ang), cos(ang))) * k + uTime * 1.1 * sqrt(k) + 2.2 * noise(vec3(p * k * 0.35 + uTime * vec2(0.05, -0.03), fi * 5.0 + 3.5)); // the crest-bending field drifts sideways; morphing it through the noise's third axis made the march boil
+        float w = 0.5 + 0.5 * sin(ph);
+        h += a * mix(0.375, w * w, keep); // squared: round crests, long flat troughs
+        a *= 0.42; k *= 1.85;
+    }
+    return h * uChop;
+}
+
+vec3 sky(vec3 d, float st) { // st: stars on or off (their reflections would only sparkle)
+    float y = max(d.y, 0.0), s = max(dot(d, SUN), 0.0);
+    vec3 c = mix(mix(uHor, uMid, smoothstep(0.0, 0.3, y)), uZen, smoothstep(0.1, 0.7, y));
+    c += uSun * ((pow(s, 6.0) * 0.3 + pow(s, 80.0) * 0.6) * uGlow + smoothstep(0.9996, 0.9998, s) * 8.0);
+    c += starfield(d, 0.7 / uRes.y) * 0.6 * uStars * st * smoothstep(0.0, 0.2, d.y);
+    float cl = smoothstep(0.5, 0.8, fbm(vec3(d.xz / (d.y + 0.1) * vec2(0.5, 1.3) + uTime * 0.004, 3.0)));
+    return mix(c, mix(uZen * 1.5, uSun * 1.3 * uGlow, pow(s, 3.0)), cl * 0.85 * smoothstep(0.0, 0.15, d.y)); // clouds lit from the sun's side
+}
+
+void main() {
+    vec2 q = (gl_FragCoord.xy - 0.5 * uRes) / uRes.y;
+    float t = uTime, roll = 0.025 * sin(t * 0.27);
+    q = q * cos(roll) + vec2(-q.y, q.x) * sin(roll);
+    vec3 ro = vec3(0.0, 1.1 * uChop + 1.3 + 0.25 * sin(t * 0.4), t * 0.6);
+    vec3 rd = normalize(vec3(q.x, q.y - 0.1 + 0.02 * sin(t * 0.31), 1.4));
+    vec3 col = sky(rd, 1.0);
+    if (rd.y < 0.0) {
+        float d = (ro.y - 1.1 * uChop) / -rd.y; // start where the ray dips below the highest crest
+        float foot = 1.0 / (uRes.y * sqrt(0.02 - rd.y)); // pixel size on the water per unit distance, stretched at grazing angles
+        for (int i = 0; i < 64; i++) {
+            vec3 p = ro + rd * d;
+            float dh = p.y - sea(p.xz, 4.0, d * foot);
+            if (abs(dh) < 0.001 * d || d > 600.0) break;
+            d += dh / (0.9 * uChop - rd.y); // no further than the steepest wave allows: longer steps tunnel through crests and the whole picture boils
+        }
+        vec3 p = ro + rd * d;
+        float f = d * foot, e = 0.01 + f, h0 = sea(p.xz, 7.0, f);
+        vec3 n = normalize(vec3(h0 - sea(p.xz + vec2(e, 0.0), 7.0, f), e, h0 - sea(p.xz + vec2(0.0, e), 7.0, f)));
+        vec3 rf = reflect(rd, n); rf.y = abs(rf.y);
+        float fr = 0.03 + 0.97 * pow(1.0 - max(dot(n, -rd), 0.0), 5.0);
+        vec3 water = vec3(0.005, 0.03, 0.05) * uGlow + uTint * 0.22 * h0 / uChop * (0.3 + pow(max(dot(rd, SUN), 0.0), 3.0)); // light through the crests
+        vec3 surf = mix(water, sky(rf, 0.0), fr);
+        col = mix(sky(normalize(vec3(rd.x, 0.0, rd.z)), 0.0), surf, exp(-d * 0.006));
+    }
+    gl_FragColor = vec4(1.0 - exp(-col * 1.5), 1.0);
+}`;
+
+function drawOcean(color) {
+    const c = hexToRgb(color), b = [c.r / 255, c.g / 255, c.b / 255], brg = [b[2], b[0], b[1]];
+    const look = {
+        fire: { uSun: [1, 0.55, 0.2], uHor: [1, 0.44, 0.12], uMid: [0.8, 0.3, 0.42], uZen: [0.06, 0.1, 0.3], uTint: [0.05, 0.5, 0.45], uSunY: 0.07, uGlow: 1, uStars: 0 },
+        night: { uSun: [0.8, 0.88, 1], uHor: [0.07, 0.1, 0.18], uMid: [0.025, 0.04, 0.09], uZen: [0.004, 0.008, 0.025], uTint: [0.1, 0.2, 0.35], uSunY: 0.19, uGlow: 0.3, uStars: 1 },
+        base: { uSun: b, uHor: [b[0], b[1] * 0.8, b[2] * 0.6], uMid: b.map((v, i) => v * 0.5 + brg[i] * 0.25), uZen: brg.map(v => v * 0.25), uTint: brg, uSunY: 0.07, uGlow: 1, uStars: 0 }
+    }[document.getElementById('oceanColors').value];
+    drawShader('ocean', OCEAN_FRAG, color, () => ({ uChop: num('oceanChop'), ...look }));
+}
+
+// --- Animation 27: Mandelbulb ---
+// The 3D cousin of the Mandelbrot set, sphere-traced with a distance estimate while the camera orbits
+// and the power slowly breathes, so the surface keeps growing new buds.
+const BULB_FRAG = `
+uniform float uPower;
+float de(vec3 p, out float trap) {
+    vec3 z = p;
+    float dr = 1.0, r = 0.0;
+    trap = 1e9;
+    for (int i = 0; i < 7; i++) {
+        r = length(z);
+        if (r > 2.0) break;
+        float th = acos(z.z / r) * uPower + uTime * 0.05, ph = atan(z.y, z.x) * uPower;
+        dr = pow(r, uPower - 1.0) * uPower * dr + 1.0;
+        z = pow(r, uPower) * vec3(sin(th) * cos(ph), sin(th) * sin(ph), cos(th)) + p;
+        trap = min(trap, dot(z, z));
+    }
+    return 0.5 * log(r) * r / dr;
+}
+
+void main() {
+    vec2 q = (gl_FragCoord.xy - 0.5 * uRes) / uRes.y;
+    float a = uTime * 0.08, el = 0.5 * sin(uTime * 0.05), dist = 3.0 + 0.9 * sin(uTime * 0.031), tr;
+    vec3 ro = dist * vec3(cos(a) * cos(el), sin(a) * cos(el), sin(el));
+    vec3 f = normalize(-ro), r = normalize(cross(f, vec3(0.0, 0.0, 1.0))), u = cross(r, f);
+    vec3 rd = normalize(f * 1.2 + r * q.x + u * q.y);
+    vec3 lo = uBase.brg, col = lo * 0.07 * (1.0 - length(q));
+    float d = 0.0, steps = 0.0, glow = 0.0;
+    bool hit = false;
+    for (int i = 0; i < 110; i++) {
+        float h = de(ro + rd * d, tr);
+        if (h < 0.0008 * d) { hit = true; break; }
+        glow += exp(-h * 16.0);
+        d += h;
+        steps += 1.0;
+        if (d > 6.0) break;
+    }
+    if (hit) {
+        vec3 p = ro + rd * d;
+        vec2 e = vec2(1.0, -1.0) * 0.0006 * d;
+        float x;
+        vec3 n = normalize(e.xyy * de(p + e.xyy, x) + e.yyx * de(p + e.yyx, x) + e.yxy * de(p + e.yxy, x) + e.xxx * de(p + e.xxx, x));
+        float m = smoothstep(0.35, 1.05, sqrt(tr)), ao = pow(1.0 - steps / 110.0, 2.5);
+        vec3 alb = m < 0.5 ? mix(lo, uBase, m * 2.0) : mix(uBase, vec3(1.0), (m - 0.5) * 1.0);
+        vec3 L = normalize(r * 0.6 + u * 0.7 - f * 0.5), hv = normalize(L - rd);
+        col = alb * (0.12 + max(dot(n, L), 0.0)) * ao
+            + (pow(max(dot(n, hv), 0.0), 40.0) * 0.5 + pow(1.0 - max(dot(n, -rd), 0.0), 3.0) * 0.35 * lo) * ao;
+    }
+    col += mix(lo, uBase, 0.5) * glow * 0.006;
+    gl_FragColor = vec4(1.0 - exp(-col * 1.8), 1.0);
+}`;
+
+function drawBulb(color) {
+    drawShader('bulb', BULB_FRAG, color, t => ({ uPower: num('bulbPower') + 0.8 * Math.sin(t * 0.045) }));
+}
+
+// --- Animation 28: Star ---
+// A sun up close: boiling granulation and drifting spots on a rotating sphere, darker toward the limb,
+// wrapped in a corona whose streamers flow outward.
+const STAR_FRAG = `
+void main() {
+    vec2 q = (gl_FragCoord.xy - 0.5 * uRes) / min(uRes.x, uRes.y);
+    float t = uTime, R = 0.29 + 0.02 * sin(t * 0.05), r = length(q), px = 1.5 / min(uRes.x, uRes.y);
+    float d = max(r - R, 0.0) / R, ang = atan(q.y, q.x);
+    vec3 ring = vec3(cos(ang), sin(ang), 0.0);
+
+    float streams = fbm(ring * 2.5 + vec3(0.0, 0.0, d * 1.3 - t * 0.06));
+    float fine = fbm(ring * 9.0 + vec3(0.0, 0.0, d * 4.0 - t * 0.15 + 5.0));
+    float flare = smoothstep(0.55, 0.85, fbm(ring * 4.0 + vec3(0.0, 0.0, t * 0.03 + 9.0)));
+    float cor = (exp(-d * 3.2) * (0.15 + 2.2 * streams * streams * streams) + exp(-d * 9.0) * flare * 1.2 + exp(-d * 22.0) * 0.6) * (0.55 + 0.9 * fine);
+    vec3 col = heat(cor * 0.75) + starfield(normalize(vec3(q, 1.5)), px * 0.6) * 0.7 * exp(-cor * 6.0);
+
+    if (r < R) {
+        vec3 n = vec3(q / R, sqrt(1.0 - r * r / (R * R)));
+        float mu = n.z, rot = t * 0.02;
+        n.xz = n.xz * cos(rot) + vec2(-n.z, n.x) * sin(rot);
+        vec3 p = n * 3.0;
+        float w = fbm(p + vec3(0.0, t * 0.04, 0.0));
+        float g = fbm(p * 2.6 + w * 2.2 + vec3(t * 0.07, 0.0, 0.0)); // granulation, stirred by the larger cells
+        float spot = smoothstep(0.6, 0.72, fbm(p * 0.6 + 9.0 - vec3(0.0, 0.0, t * 0.008)));
+        float x = (0.34 + 0.5 * smoothstep(0.25, 0.75, g)) * (0.35 + 0.65 * sqrt(mu)) * (1.0 - 0.7 * spot);
+        col = mix(col, heat(x), smoothstep(R, R - px, r));
+    }
+    gl_FragColor = vec4(1.0 - exp(-col * 1.4), 1.0);
+}`;
+
+function drawStar(color) {
+    drawShader('star', STAR_FRAG, color, () => ({ uFire: fireOn('starColors') }));
 }
 
 // --- Main Animation Loop ---
@@ -2771,6 +2994,14 @@ function loop() {
         drawSilk(color);
     } else if (type === 'blackhole') {
         drawHole(color);
+    } else if (type === 'nebula') {
+        drawNebula(color);
+    } else if (type === 'ocean') {
+        drawOcean(color);
+    } else if (type === 'mandelbulb') {
+        drawBulb(color);
+    } else if (type === 'star') {
+        drawStar(color);
     } else if (type === 'mesh') {
         drawMesh(color);
     } else if (type === 'burnin') {
