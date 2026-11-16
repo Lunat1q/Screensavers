@@ -590,13 +590,20 @@
         </div>
         <div class="setting-row">
             <label>Spark Count</label>
-            <input type="range" id="fwSparks" min="20" max="150" step="10" value="60">
+            <input type="range" id="fwSparks" min="20" max="400" step="10" value="160">
             <span class="val" data-for="fwSparks"></span>
         </div>
         <div class="setting-row">
             <label>Gravity</label>
             <input type="range" id="fwGravity" min="0.01" max="0.15" step="0.01" value="0.05">
             <span class="val" data-for="fwGravity"></span>
+        </div>
+        <div class="setting-row">
+            <label for="fwColors">Colors</label>
+            <select id="fwColors">
+                <option value="random">Random</option>
+                <option value="base">Base Color</option>
+            </select>
         </div>
     </div>
 

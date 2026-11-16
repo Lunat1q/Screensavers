@@ -28,7 +28,7 @@ All settings are stored in the page URL, so you can bookmark a setup or send it 
 | Particles | **Constellation** | Drifting dots linked by lines when they get close. |
 | | **Flow Field** | Particles carried by a moving vector field. |
 | | **Cosmic Warp** | Flying through a star field. |
-| | **Fireworks** | Rockets bursting into sparks with gravity. |
+| | **Fireworks** | Rockets bursting into peony, ring, willow, chrysanthemum, strobe and crackle shells, with air drag and glowing trails. |
 | | **Galaxy** | A tilted spiral galaxy: stars orbit through density-wave arms with gas glow, dust lanes and young blue stars. |
 | | **Attractor** | Thousands of particles tracing chaotic 3D attractors (Lorenz, Thomas, Aizawa, Halvorsen) with glowing trails. |
 | Waves & Patterns | **Harmonograph** | A looping, rotating curve with trails. |
