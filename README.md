@@ -44,6 +44,7 @@ All settings are stored in the page URL, so you can bookmark a setup or send it 
 | Scenes | **Synthwave** | Outrun sunset: striped sun, neon floor and wireframe canyon flying past. |
 | | **Cyber Tunnel** | Flying through a twisting tunnel of polygons. |
 | | **Ripples** | Raindrops on a night lake: a real wave simulation that bends the moon's reflection. |
+| | **Maze** | A maze carved cell by cell with glowing walls, then the longest route traced in gold to a treasure chest, with hotkeys (see below). |
 | | **Lightning** | Forked bolts that re-strike and light up the storm clouds from inside, with rain and hills. |
 | | **3D Pipes** | Shiny pipes growing and turning through a 3D grid, like the old Windows screensaver. |
 | | **Black Hole** | A ray-traced black hole: gravity bends the accretion disk over the shadow and smears the stars behind it. |
@@ -116,6 +117,23 @@ On phones and tablets, tap the mesh to open the same panel. Hold a button to rep
 | `H`, right-click or tap | Show or hide the controls panel |
 
 For the original full-color look, set Base Color to white.
+
+### Maze hotkeys
+
+Maze comes from [MazeX](https://github.com/Lunat1q/MazeX), and its hotkeys work the same way as Mesh's: right-click, press `H` or tap the screen for the controls panel.
+
+| Key | Action |
+|---|---|
+| `K` / `L` | Bigger / smaller cells (restarts the maze) |
+| `+` / `-` | Faster / slower carving |
+| `[` / `]` | Longer / shorter carver trail |
+| `O` / `P` | Longer / shorter wall trail |
+| `G` | Toggle glow (size and intensity are in the settings) |
+| `A` | Pause or resume |
+| `S` | Show size, length, progress and FPS |
+| `H`, right-click or tap | Show or hide the controls panel |
+
+For the original look, set Base Color to lime (`#00ff00`).
 
 ## Run it locally
 
