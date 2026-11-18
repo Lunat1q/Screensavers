@@ -4,7 +4,7 @@ Full-screen animated backgrounds that run in the browser. Put one on a second mo
 
 **[Open it: screen.maxpodolski.com](https://screen.maxpodolski.com/)**
 
-No install, no build, no tracking. It's a static page (`index.html` + `script.js`) drawn on a single canvas.
+No install, no build, no tracking. It's a static page (`index.html` + plain scripts in `js/`, one per animation) drawn on a single canvas.
 
 ![Screensaver Studio settings panel](screenshots/studio.jpeg)
 
