@@ -47,7 +47,7 @@ All settings are stored in the page URL, so you can bookmark a setup or send it 
 | | **Lightning** | Forked bolts that re-strike and light up the storm clouds from inside, with rain and hills. |
 | | **3D Pipes** | Shiny pipes growing and turning through a 3D grid, like the old Windows screensaver. |
 | | **Black Hole** | A ray-traced black hole: gravity bends the accretion disk over the shadow and smears the stars behind it. |
-| | **Nebula** | A slow flight through glowing volumetric gas clouds and dark dust lanes, with stars behind. |
+| | **Nebula** | A slow flight through an emission nebula: hot stars embedded in filamentary gas blow cavities and light the walls, oxygen blue near them and hydrogen red further out, with dark dust lanes between. |
 | | **Ocean** | Open sea at sunset or under a full moon: rolling swells that reflect the sky and carry a glitter path. |
 | | **Star** | A sun up close: boiling surface, drifting sunspots and a streaming corona. |
 | Fun | **Win Update** | A fake "Working on updates" screen (see below). |
