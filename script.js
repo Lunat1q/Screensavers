@@ -2869,7 +2869,7 @@ float sea(vec2 p, float oct, float foot) {
     float h = 0.0, a = 0.55, k = 0.5;
     for (int i = 0; i < 7; i++) {
         if (float(i) >= oct) break;
-        float keep = 1.0 - smoothstep(1.0, 2.5, k * foot);
+        float keep = 1.0 - smoothstep(0.5, 1.5, k * foot);
         float fi = float(i), ang = 0.9 * sin(fi * 2.4);
         float ph = dot(p, vec2(sin(ang), cos(ang))) * k + uTime * 1.1 * sqrt(k) + 2.2 * noise(vec3(p * k * 0.35 + uTime * vec2(0.05, -0.03), fi * 5.0 + 3.5)); // the crest-bending field drifts sideways; morphing it through the noise's third axis made the march boil
         float w = 0.5 + 0.5 * sin(ph);
@@ -2910,7 +2910,7 @@ void main() {
     vec3 col = sky(rd, 1.0);
     if (rd.y < 0.0) {
         float d = (ro.y - 1.1 * uChop) / -rd.y; // start where the ray dips below the highest crest
-        float foot = 1.0 / (uRes.y * (0.01 - rd.y)); // pixel depth on the water per unit distance: 1/sin(angle), the true grazing stretch (sqrt undershot it ~7x near the horizon, so far waves aliased)
+        float foot = 1.0 / (uRes.y * sqrt(0.02 - rd.y)); // pixel size on the water per unit distance, stretched at grazing angles
         // Crest silhouettes: track how many pixels the ray clears the surface by. A dip that rises again is a crest the ray
         // skimmed past; the closest such near-miss is blended in by pixel coverage, or every crest edge is a hard stair-step.
         float pa = 1.0 / (1.4 * uRes.y), run = 1e9, runD = 0.0, miss = 1.0, missD = 0.0;
